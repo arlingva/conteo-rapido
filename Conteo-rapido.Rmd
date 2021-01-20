@@ -1,0 +1,198 @@
+---
+title: "Conteo Rápido"
+author: "Equipo 1"
+date: "12/8/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(dplyr)
+library(janitor)
+library(kableExtra)
+
+rm(list = ls())
+`%notin%` = function(x,y) !(x %in% y)
+```
+
+## Lectura de datos
+
+```{r}
+gobernador2015<- read_excel("data/ComputoGobernador2015_Casilla.xlsx", 
+                            sheet = "POR CASILLA", skip = 1) %>%
+  clean_names()
+
+UbicacionCasillas2015 <- read_excel("data/UbicacionCasillas2015.xlsx", skip = 4) %>%
+  clean_names()
+```
+
+Se agrega lista nominal a la tabla de resultados por casilla
+
+```{r}
+gobernador2015 <- UbicacionCasillas2015 %>%
+  left_join(gobernador2015, ., by = c("seccion", "casilla")) %>%
+  select(-c(distrito_local.y, municipio.y, domicilio)) %>%
+  mutate(seccion_casilla = paste(seccion, casilla)) %>%
+  rename(municipio = municipio.x,
+         distrito_local = distrito_local.x)
+```
+
+
+## Muestreo aleatorio simple
+
+Genera una muestra, la guarda y lee
+
+```{r, eval = FALSE}
+sample(gobernador2015$seccion_casilla, 370) %>%
+  write.csv("muestra aleatoria.csv")
+muestra <- read.csv("muestra aleatoria.csv")
+```
+
+Resultados globales
+
+```{r}
+gobernador2015 %>%
+  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
+            PAN = sum(pan) / sum(votacion_total_emitida),
+            PRD = sum(prd) / sum(votacion_total_emitida)) -> Global
+
+# Resultado global
+Global <- Global * 100
+```
+
+Simulación 
+
+```{r}
+N <- 370          # Número de secciones
+M <- 10000        # Número de repeticiones
+
+# Crea una matriz vacía
+simulacion <- matrix(rep(0, length(Global)*M), nrow = M)
+
+t <- proc.time() # calcula tiempo: inicio 
+for(i in 1:M){
+  muestra <- sample(gobernador2015$seccion_casilla, N)
+  gobernador2015 %>%
+  filter(seccion_casilla %in% muestra) %>%
+  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
+            PAN = sum(pan) / sum(votacion_total_emitida),
+            PRD = sum(prd) / sum(votacion_total_emitida)) %>%
+    as.numeric() -> simulacion[i, ]
+}
+proc.time()-t  # calcula tiempo: final 
+
+colnames(simulacion) <- c("PRI", "PAN", "PRD") 
+
+# Se convierte a data frame y se multiplica por 100
+simulacion <- data.frame(simulacion * 100)
+```
+
+Se calculan las diferencias entre lo estimado y el valor real
+
+```{r}
+simulacion <- simulacion %>%
+  mutate(dif.PRI = PRI - Global$PRI,
+         dif.PAN = PAN - Global$PAN,
+         dif.PRD = PRD - Global$PRD)
+```
+
+```{r}
+summary(simulacion[4:6])
+```
+
+### Error cuadrático medio
+
+```{r}
+simulacion %>%
+  summarise(ECM.PRI = sum(dif.PRI^2)/M,
+            ECM.PAN = sum(dif.PAN^2)/M,
+            ECM.PRD = sum(dif.PRD^2)/M)
+```
+
+
+## Análisis exploratorio de datos
+
+Confirmar que el cálculo "total_coalicion" sea correcto
+
+TOTAL COALICIÓN = PRI	+ PVEM + PANAL + PRI-PVEM-PANAL + PRI-PVEM +	PRI-PANAL +	PVEM-PANAL
+
+```{r}
+gobernador2015 %>%
+  transmute(validaCoalicion = total_coalicion
+            -(pri	+ pvem + panal +
+              pri_pvem_panal + pri_pvem +	pri_panal + 
+              pvem_panal)) %>% 
+  summary()
+```
+
+Secciones sin información en resultados por casilla
+
+```{r}
+UbicacionCasillas2015 %>%
+  mutate(seccion_casilla = paste(seccion, casilla)) %>%
+  select(municipio, seccion_casilla) %>%
+  filter(seccion_casilla %notin% gobernador2015$seccion_casilla)
+```
+
+### Resultados por municipio
+
+```{r}
+gobernador2015 %>%
+  group_by(municipio) %>%
+  summarise(PAN = sum(pan),
+            PRI = sum(total_coalicion),
+            PRD = sum(prd),
+            PT = sum(pt),
+            MORENA = sum(morena),
+            Humanista = sum(humanista),
+            EncuentroSocial = sum(encuentro_social),
+            NoRegistrado = sum(candidato_no_registrado),
+            Nulos = sum(votos_nulos),
+            Validos = sum(total_votos_validos),
+            Total = sum(votacion_total_emitida)
+            ) %>%
+  mutate(Ganador = case_when(
+    PAN > PRI ~ "PAN",
+    PAN < PRI ~ "PRI",
+    TRUE ~ "Empate")
+    )
+```
+
+Se agrupan el resto de los partidos
+
+```{r}
+gobernador2015 %>%
+  group_by(municipio) %>%
+  summarise(PAN = sum(pan),
+            PRI = sum(total_coalicion),
+            PRD = sum(prd),
+            OTROS = sum(pt) + sum(morena) + sum(humanista) + sum(encuentro_social),
+            NULOS = sum(candidato_no_registrado) + sum(votos_nulos),
+            Válidos = sum(total_votos_validos),
+            Total = sum(votacion_total_emitida),
+            LN = sum(lista_nominal)
+            ) %>%
+  mutate(Ganador = case_when(
+    PAN > PRI ~ "PAN",
+    PAN < PRI ~ "PRI",
+    TRUE ~ "Empate")
+    )
+```
+
+
+## Anexos
+
+### Tipos de casillas
+
+- Casilla básica: Se instalan en secciones que tienen un número no mayor a 750 electores.
+
+- Casilla contigua: Cuando el número de electores de la sección es superior a 750, éstas se instalan.
+
+- Casilla extraordinaria: Atienden a residentes de una sección, que por condiciones de vías de comunicación o socio culturales, tengan difícil acceso.
+
+- Casillas especiales: Se instalan para que los electores fuera de la sección correspondiente a su domicilio puedan votar.
+
+https://portalanterior.ine.mx/archivos2/Alterna/2016/PREP/CentroDeAyuda/Extraordinaria/rsc/pdf/tipos_casillas.pdf
