@@ -446,13 +446,8 @@ UbicacionCasillas2015 &lt;- read_excel(&quot;data/UbicacionCasillas2015.xlsx&quo
   rename(municipio = municipio.x,
          distrito_local = distrito_local.x)</code></pre>
 </div>
-<div id="muestreo-aleatorio-simple" class="section level2">
-<h2>Muestreo aleatorio simple</h2>
-<p>Genera una muestra, la guarda y lee</p>
-<pre class="r"><code>sample(gobernador2015$seccion_casilla, 370) %&gt;%
-  write.csv(&quot;muestra aleatoria.csv&quot;)
-muestra &lt;- read.csv(&quot;muestra aleatoria.csv&quot;)</code></pre>
-<p>Resultados globales</p>
+<div id="resultados-globales" class="section level2">
+<h2>Resultados globales</h2>
 <pre class="r"><code>gobernador2015 %&gt;%
   summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
             PAN = sum(pan) / sum(votacion_total_emitida),
@@ -460,12 +455,15 @@ muestra &lt;- read.csv(&quot;muestra aleatoria.csv&quot;)</code></pre>
 
 # Resultado global
 Global &lt;- Global * 100</code></pre>
-<p>Simulación</p>
-<pre class="r"><code>N &lt;- 370          # Número de secciones
-M &lt;- 10000        # Número de repeticiones
-
-# Crea una matriz vacía
-simulacion &lt;- matrix(rep(0, length(Global)*M), nrow = M)
+<pre class="r"><code>total.casillas &lt;- length(gobernador2015$seccion_casilla)
+N &lt;- 370          # Número de secciones
+M &lt;- 1000        # Número de repeticiones</code></pre>
+</div>
+<div id="simulación-mas" class="section level2">
+<h2>Simulación MAS</h2>
+<pre class="r"><code># Crea una matriz vacía
+simulacionMAS &lt;- matrix(rep(0, length(Global)*M), nrow = M)
+colnames(simulacionMAS) &lt;- c(&quot;PRI&quot;, &quot;PAN&quot;, &quot;PRD&quot;) 
 
 t &lt;- proc.time() # calcula tiempo: inicio 
 for(i in 1:M){
@@ -475,36 +473,91 @@ for(i in 1:M){
   summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
             PAN = sum(pan) / sum(votacion_total_emitida),
             PRD = sum(prd) / sum(votacion_total_emitida)) %&gt;%
-    as.numeric() -&gt; simulacion[i, ]
+    as.numeric() -&gt; simulacionMAS[i, ]
 }
 proc.time()-t  # calcula tiempo: final </code></pre>
 <pre><code>##    user  system elapsed 
-##  93.594   2.175 125.492</code></pre>
-<pre class="r"><code>colnames(simulacion) &lt;- c(&quot;PRI&quot;, &quot;PAN&quot;, &quot;PRD&quot;) 
-
-# Se convierte a data frame y se multiplica por 100
-simulacion &lt;- data.frame(simulacion * 100)</code></pre>
+##   7.621   0.067   7.753</code></pre>
+<pre class="r"><code># Se convierte a data frame y se multiplica por 100
+simulacionMAS &lt;- data.frame(simulacionMAS * 100)</code></pre>
 <p>Se calculan las diferencias entre lo estimado y el valor real</p>
-<pre class="r"><code>simulacion &lt;- simulacion %&gt;%
+<pre class="r"><code>simulacionMAS &lt;- simulacionMAS %&gt;%
   mutate(dif.PRI = PRI - Global$PRI,
          dif.PAN = PAN - Global$PAN,
          dif.PRD = PRD - Global$PRD)</code></pre>
-<pre class="r"><code>summary(simulacion[4:6])</code></pre>
-<pre><code>##     dif.PRI              dif.PAN              dif.PRD         
-##  Min.   :-1.8078166   Min.   :-1.7891972   Min.   :-0.625123  
-##  1st Qu.:-0.3088569   1st Qu.:-0.3269498   1st Qu.:-0.131260  
-##  Median :-0.0098811   Median : 0.0009672   Median :-0.004962  
-##  Mean   :-0.0007384   Mean   :-0.0041486   Mean   : 0.002146  
-##  3rd Qu.: 0.3068956   3rd Qu.: 0.3172032   3rd Qu.: 0.130566  
-##  Max.   : 1.8336014   Max.   : 1.7420870   Max.   : 0.878724</code></pre>
 <div id="error-cuadrático-medio" class="section level3">
 <h3>Error cuadrático medio</h3>
-<pre class="r"><code>simulacion %&gt;%
+<pre class="r"><code>simulacionMAS %&gt;%
   summarise(ECM.PRI = sum(dif.PRI^2)/M,
             ECM.PAN = sum(dif.PAN^2)/M,
             ECM.PRD = sum(dif.PRD^2)/M)</code></pre>
 <pre><code>##     ECM.PRI   ECM.PAN    ECM.PRD
-## 1 0.2081993 0.2309893 0.03778036</code></pre>
+## 1 0.1947972 0.2194353 0.03841866</code></pre>
+<pre class="r"><code>summary(simulacionMAS[4:6])</code></pre>
+<pre><code>##     dif.PRI            dif.PAN            dif.PRD         
+##  Min.   :-1.36732   Min.   :-1.48472   Min.   :-0.546712  
+##  1st Qu.:-0.31140   1st Qu.:-0.29796   1st Qu.:-0.114325  
+##  Median :-0.03223   Median : 0.01614   Median : 0.004932  
+##  Mean   :-0.02244   Mean   : 0.01271   Mean   : 0.010546  
+##  3rd Qu.: 0.27703   3rd Qu.: 0.33030   3rd Qu.: 0.138252  
+##  Max.   : 1.36726   Max.   : 1.60638   Max.   : 0.634758</code></pre>
+</div>
+</div>
+<div id="muestreo-sistematizado" class="section level2">
+<h2>Muestreo sistematizado</h2>
+<pre class="r"><code># Se calcula k, la posición de la casilla inicial se elige al azar entre 1 y k
+k &lt;- round(total.casillas/N,0)
+
+# Selección de posición de casilla inicial
+casilla0 &lt;- sample(1:k, 1)
+
+# Seleccion de posición del resto de casillas
+posicion &lt;- c()
+for(i in 1: N-1) {
+  posicion &lt;- c(posicion, casilla0 + i*k)
+}
+#length(seleccion.casillas)
+
+# Crea una matriz vacía
+simulacionSIST &lt;- matrix(rep(0, length(Global)*M), nrow = M)
+colnames(simulacionSIST) &lt;- c(&quot;PRI&quot;, &quot;PAN&quot;, &quot;PRD&quot;) 
+
+t &lt;- proc.time() # calcula tiempo: inicio 
+for(i in 1:M){
+  muestra &lt;- gobernador2015$seccion_casilla[posicion]
+  gobernador2015 %&gt;%
+  filter(seccion_casilla %in% muestra) %&gt;%
+  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
+            PAN = sum(pan) / sum(votacion_total_emitida),
+            PRD = sum(prd) / sum(votacion_total_emitida)) %&gt;%
+    as.numeric() -&gt; simulacionSIST[i, ]
+}
+proc.time()-t  # calcula tiempo: final </code></pre>
+<pre><code>##    user  system elapsed 
+##   7.206   0.060   7.323</code></pre>
+<pre class="r"><code># Se convierte a data frame y se multiplica por 100
+simulacionSIST &lt;- data.frame(simulacionSIST * 100)</code></pre>
+<p>Se calculan las diferencias entre lo estimado y el valor real</p>
+<pre class="r"><code>simulacionSIST &lt;- simulacionSIST %&gt;%
+  mutate(dif.PRI = PRI - Global$PRI,
+         dif.PAN = PAN - Global$PAN,
+         dif.PRD = PRD - Global$PRD)</code></pre>
+<div id="error-cuadrático-medio-1" class="section level3">
+<h3>Error cuadrático medio</h3>
+<pre class="r"><code>simulacionSIST %&gt;%
+  summarise(ECM.PRI = sum(dif.PRI^2)/M,
+            ECM.PAN = sum(dif.PAN^2)/M,
+            ECM.PRD = sum(dif.PRD^2)/M)</code></pre>
+<pre><code>##     ECM.PRI   ECM.PAN     ECM.PRD
+## 1 0.3852747 0.2195932 0.001630049</code></pre>
+<pre class="r"><code>summary(simulacionSIST[4:6])</code></pre>
+<pre><code>##     dif.PRI          dif.PAN           dif.PRD        
+##  Min.   :0.6207   Min.   :-0.4686   Min.   :-0.04037  
+##  1st Qu.:0.6207   1st Qu.:-0.4686   1st Qu.:-0.04037  
+##  Median :0.6207   Median :-0.4686   Median :-0.04037  
+##  Mean   :0.6207   Mean   :-0.4686   Mean   :-0.04037  
+##  3rd Qu.:0.6207   3rd Qu.:-0.4686   3rd Qu.:-0.04037  
+##  Max.   :0.6207   Max.   :-0.4686   Max.   :-0.04037</code></pre>
 </div>
 </div>
 <div id="análisis-exploratorio-de-datos" class="section level2">
