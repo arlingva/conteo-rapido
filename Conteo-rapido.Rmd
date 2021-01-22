@@ -53,16 +53,16 @@ gobernador2015 %>%
 
 # Resultado global
 Global <- Global * 100
+Global
 ```
 
 ```{r}
 total.casillas <- length(gobernador2015$seccion_casilla)
 N <- 370          # Número de secciones
-M <- 1000        # Número de repeticiones
+M <- 10000        # Número de repeticiones
 ```
 
-
-## Simulación MAS
+## Simulación: Muestreo aleatorio simple
 
 ```{r}
 # Crea una matriz vacía
@@ -81,11 +81,14 @@ for(i in 1:M){
 }
 proc.time()-t  # calcula tiempo: final 
 
-# Se convierte a data frame y se multiplica por 100
-simulacionMAS <- data.frame(simulacionMAS * 100)
+# Se convierte a data frame, se multiplica por 100 y se calcula error
+simulacionMAS <- data.frame(simulacionMAS * 100) %>%
+    mutate(dif.PRI = PRI - Global$PRI,
+           dif.PAN = PAN - Global$PAN,
+           dif.PRD = PRD - Global$PRD)
 ```
 
-## Muestreo sistematizado
+## Simulación: Muestreo sistematizado
 
 ```{r}
 # Se calcula k, la posición de la casilla inicial se elige al azar entre 1 y k
@@ -117,14 +120,29 @@ for(i in 1:M){
 }
 proc.time()-t  # calcula tiempo: final 
 
-# Se convierte a data frame y se multiplica por 100
-simulacionSIST <- data.frame(simulacionSIST * 100)
+# Se convierte a data frame, se multiplica por 100 y se calcula error
+simulacionSIST <- data.frame(simulacionSIST * 100) %>%
+    mutate(dif.PRI = PRI - Global$PRI,
+           dif.PAN = PAN - Global$PAN,
+           dif.PRD = PRD - Global$PRD)
+```
+
+## Cálculo de error cuadrático medio
+
+```{r}
+simulacionMAS %>%
+  summarise(ECM.PRI = sum(dif.PRI^2)/M,
+            ECM.PAN = sum(dif.PAN^2)/M,
+            ECM.PRD = sum(dif.PRD^2)/M)
 ```
 
 ```{r}
-calculaECM(simulacionMAS)
-calculaECM(simulacionSIST)
+simulacionSIST %>%
+  summarise(ECM.PRI = sum(dif.PRI^2)/M,
+            ECM.PAN = sum(dif.PAN^2)/M,
+            ECM.PRD = sum(dif.PRD^2)/M)
 ```
+## Resumen de error de estimación
 
 ```{r}
 summary(simulacionMAS[4:6])

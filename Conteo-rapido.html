@@ -457,10 +457,10 @@ UbicacionCasillas2015 &lt;- read_excel(&quot;data/UbicacionCasillas2015.xlsx&quo
 Global &lt;- Global * 100</code></pre>
 <pre class="r"><code>total.casillas &lt;- length(gobernador2015$seccion_casilla)
 N &lt;- 370          # Número de secciones
-M &lt;- 1000        # Número de repeticiones</code></pre>
+M &lt;- 10000        # Número de repeticiones</code></pre>
 </div>
-<div id="simulación-mas" class="section level2">
-<h2>Simulación MAS</h2>
+<div id="simulación-muestreo-aleatorio-simple" class="section level2">
+<h2>Simulación: Muestreo aleatorio simple</h2>
 <pre class="r"><code># Crea una matriz vacía
 simulacionMAS &lt;- matrix(rep(0, length(Global)*M), nrow = M)
 colnames(simulacionMAS) &lt;- c(&quot;PRI&quot;, &quot;PAN&quot;, &quot;PRD&quot;) 
@@ -477,34 +477,15 @@ for(i in 1:M){
 }
 proc.time()-t  # calcula tiempo: final </code></pre>
 <pre><code>##    user  system elapsed 
-##   7.621   0.067   7.753</code></pre>
-<pre class="r"><code># Se convierte a data frame y se multiplica por 100
-simulacionMAS &lt;- data.frame(simulacionMAS * 100)</code></pre>
-<p>Se calculan las diferencias entre lo estimado y el valor real</p>
-<pre class="r"><code>simulacionMAS &lt;- simulacionMAS %&gt;%
-  mutate(dif.PRI = PRI - Global$PRI,
-         dif.PAN = PAN - Global$PAN,
-         dif.PRD = PRD - Global$PRD)</code></pre>
-<div id="error-cuadrático-medio" class="section level3">
-<h3>Error cuadrático medio</h3>
-<pre class="r"><code>simulacionMAS %&gt;%
-  summarise(ECM.PRI = sum(dif.PRI^2)/M,
-            ECM.PAN = sum(dif.PAN^2)/M,
-            ECM.PRD = sum(dif.PRD^2)/M)</code></pre>
-<pre><code>##     ECM.PRI   ECM.PAN    ECM.PRD
-## 1 0.1947972 0.2194353 0.03841866</code></pre>
-<pre class="r"><code>summary(simulacionMAS[4:6])</code></pre>
-<pre><code>##     dif.PRI            dif.PAN            dif.PRD         
-##  Min.   :-1.36732   Min.   :-1.48472   Min.   :-0.546712  
-##  1st Qu.:-0.31140   1st Qu.:-0.29796   1st Qu.:-0.114325  
-##  Median :-0.03223   Median : 0.01614   Median : 0.004932  
-##  Mean   :-0.02244   Mean   : 0.01271   Mean   : 0.010546  
-##  3rd Qu.: 0.27703   3rd Qu.: 0.33030   3rd Qu.: 0.138252  
-##  Max.   : 1.36726   Max.   : 1.60638   Max.   : 0.634758</code></pre>
+##  79.974   1.173  91.520</code></pre>
+<pre class="r"><code># Se convierte a data frame, se multiplica por 100 y se calcula error
+simulacionMAS &lt;- data.frame(simulacionMAS * 100) %&gt;%
+    mutate(dif.PRI = PRI - Global$PRI,
+           dif.PAN = PAN - Global$PAN,
+           dif.PRD = PRD - Global$PRD)</code></pre>
 </div>
-</div>
-<div id="muestreo-sistematizado" class="section level2">
-<h2>Muestreo sistematizado</h2>
+<div id="simulación-muestreo-sistematizado" class="section level2">
+<h2>Simulación: Muestreo sistematizado</h2>
 <pre class="r"><code># Se calcula k, la posición de la casilla inicial se elige al azar entre 1 y k
 k &lt;- round(total.casillas/N,0)
 
@@ -534,145 +515,46 @@ for(i in 1:M){
 }
 proc.time()-t  # calcula tiempo: final </code></pre>
 <pre><code>##    user  system elapsed 
-##   7.206   0.060   7.323</code></pre>
-<pre class="r"><code># Se convierte a data frame y se multiplica por 100
-simulacionSIST &lt;- data.frame(simulacionSIST * 100)</code></pre>
-<p>Se calculan las diferencias entre lo estimado y el valor real</p>
-<pre class="r"><code>simulacionSIST &lt;- simulacionSIST %&gt;%
-  mutate(dif.PRI = PRI - Global$PRI,
-         dif.PAN = PAN - Global$PAN,
-         dif.PRD = PRD - Global$PRD)</code></pre>
-<div id="error-cuadrático-medio-1" class="section level3">
-<h3>Error cuadrático medio</h3>
+##  76.364   0.995  82.971</code></pre>
+<pre class="r"><code># Se convierte a data frame, se multiplica por 100 y se calcula error
+simulacionSIST &lt;- data.frame(simulacionSIST * 100) %&gt;%
+    mutate(dif.PRI = PRI - Global$PRI,
+           dif.PAN = PAN - Global$PAN,
+           dif.PRD = PRD - Global$PRD)</code></pre>
+</div>
+<div id="cálculo-de-error-cuadrático-medio" class="section level2">
+<h2>Cálculo de error cuadrático medio</h2>
+<pre class="r"><code>simulacionMAS %&gt;%
+  summarise(ECM.PRI = sum(dif.PRI^2)/M,
+            ECM.PAN = sum(dif.PAN^2)/M,
+            ECM.PRD = sum(dif.PRD^2)/M)</code></pre>
+<pre><code>##     ECM.PRI   ECM.PAN    ECM.PRD
+## 1 0.2084228 0.2304447 0.03783135</code></pre>
 <pre class="r"><code>simulacionSIST %&gt;%
   summarise(ECM.PRI = sum(dif.PRI^2)/M,
             ECM.PAN = sum(dif.PAN^2)/M,
             ECM.PRD = sum(dif.PRD^2)/M)</code></pre>
-<pre><code>##     ECM.PRI   ECM.PAN     ECM.PRD
-## 1 0.3852747 0.2195932 0.001630049</code></pre>
+<pre><code>##     ECM.PRI    ECM.PAN    ECM.PRD
+## 1 0.1893105 0.01712545 0.04110277</code></pre>
+</div>
+<div id="resumen-de-error-de-estimación" class="section level2">
+<h2>Resumen de error de estimación</h2>
+<pre class="r"><code>summary(simulacionMAS[4:6])</code></pre>
+<pre><code>##     dif.PRI             dif.PAN              dif.PRD          
+##  Min.   :-1.968067   Min.   :-1.9307020   Min.   :-0.6448127  
+##  1st Qu.:-0.316953   1st Qu.:-0.3284165   1st Qu.:-0.1320475  
+##  Median :-0.008683   Median : 0.0001774   Median :-0.0013807  
+##  Mean   :-0.002291   Mean   :-0.0011123   Mean   : 0.0007825  
+##  3rd Qu.: 0.302523   3rd Qu.: 0.3189625   3rd Qu.: 0.1292840  
+##  Max.   : 1.593004   Max.   : 1.8789208   Max.   : 0.7572049</code></pre>
 <pre class="r"><code>summary(simulacionSIST[4:6])</code></pre>
-<pre><code>##     dif.PRI          dif.PAN           dif.PRD        
-##  Min.   :0.6207   Min.   :-0.4686   Min.   :-0.04037  
-##  1st Qu.:0.6207   1st Qu.:-0.4686   1st Qu.:-0.04037  
-##  Median :0.6207   Median :-0.4686   Median :-0.04037  
-##  Mean   :0.6207   Mean   :-0.4686   Mean   :-0.04037  
-##  3rd Qu.:0.6207   3rd Qu.:-0.4686   3rd Qu.:-0.04037  
-##  Max.   :0.6207   Max.   :-0.4686   Max.   :-0.04037</code></pre>
-</div>
-</div>
-<div id="análisis-exploratorio-de-datos" class="section level2">
-<h2>Análisis exploratorio de datos</h2>
-<p>Confirmar que el cálculo “total_coalicion” sea correcto</p>
-<p>TOTAL COALICIÓN = PRI + PVEM + PANAL + PRI-PVEM-PANAL + PRI-PVEM + PRI-PANAL + PVEM-PANAL</p>
-<pre class="r"><code>gobernador2015 %&gt;%
-  transmute(validaCoalicion = total_coalicion
-            -(pri   + pvem + panal +
-              pri_pvem_panal + pri_pvem +   pri_panal + 
-              pvem_panal)) %&gt;% 
-  summary()</code></pre>
-<pre><code>##  validaCoalicion
-##  Min.   :0      
-##  1st Qu.:0      
-##  Median :0      
-##  Mean   :0      
-##  3rd Qu.:0      
-##  Max.   :0</code></pre>
-<p>Secciones sin información en resultados por casilla</p>
-<pre class="r"><code>UbicacionCasillas2015 %&gt;%
-  mutate(seccion_casilla = paste(seccion, casilla)) %&gt;%
-  select(municipio, seccion_casilla) %&gt;%
-  filter(seccion_casilla %notin% gobernador2015$seccion_casilla)</code></pre>
-<pre><code>## # A tibble: 5 x 2
-##   municipio  seccion_casilla
-##   &lt;chr&gt;      &lt;chr&gt;          
-## 1 CABORCA    299 BASICA     
-## 2 CABORCA    309 BASICA     
-## 3 CAJEME     847 BASICA     
-## 4 CAJEME     903 CONTIGUA 1 
-## 5 HERMOSILLO 568 CONTIGUA 2</code></pre>
-<div id="resultados-por-municipio" class="section level3">
-<h3>Resultados por municipio</h3>
-<pre class="r"><code>gobernador2015 %&gt;%
-  group_by(municipio) %&gt;%
-  summarise(PAN = sum(pan),
-            PRI = sum(total_coalicion),
-            PRD = sum(prd),
-            PT = sum(pt),
-            MORENA = sum(morena),
-            Humanista = sum(humanista),
-            EncuentroSocial = sum(encuentro_social),
-            NoRegistrado = sum(candidato_no_registrado),
-            Nulos = sum(votos_nulos),
-            Validos = sum(total_votos_validos),
-            Total = sum(votacion_total_emitida)
-            ) %&gt;%
-  mutate(Ganador = case_when(
-    PAN &gt; PRI ~ &quot;PAN&quot;,
-    PAN &lt; PRI ~ &quot;PRI&quot;,
-    TRUE ~ &quot;Empate&quot;)
-    )</code></pre>
-<pre><code>## `summarise()` ungrouping output (override with `.groups` argument)</code></pre>
-<pre><code>## # A tibble: 72 x 13
-##    municipio   PAN   PRI   PRD    PT MORENA Humanista EncuentroSocial
-##    &lt;chr&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;     &lt;dbl&gt;           &lt;dbl&gt;
-##  1 ACONCHI     867   876    14     4     35         1               2
-##  2 AGUA PRI… 17431 10554   495   489    395       120             101
-##  3 ALAMOS     5560  6478    70    47    111        17               4
-##  4 ALTAR      1417  2053   721   151     21         2               3
-##  5 ARIVECHI    448   563     6     2     12         0               2
-##  6 ARIZPE      948  1145   260     5      2         1               0
-##  7 ATIL        291   306     1     0      3         1               9
-##  8 BACADEHU…   335   541     5     2      2         3               1
-##  9 BACANORA    470   568     8     6     11         3               5
-## 10 BACERAC     473   366   125     1      0         0               2
-## # … with 62 more rows, and 5 more variables: NoRegistrado &lt;dbl&gt;, Nulos &lt;dbl&gt;,
-## #   Validos &lt;dbl&gt;, Total &lt;dbl&gt;, Ganador &lt;chr&gt;</code></pre>
-<p>Se agrupan el resto de los partidos</p>
-<pre class="r"><code>gobernador2015 %&gt;%
-  group_by(municipio) %&gt;%
-  summarise(PAN = sum(pan),
-            PRI = sum(total_coalicion),
-            PRD = sum(prd),
-            OTROS = sum(pt) + sum(morena) + sum(humanista) + sum(encuentro_social),
-            NULOS = sum(candidato_no_registrado) + sum(votos_nulos),
-            Válidos = sum(total_votos_validos),
-            Total = sum(votacion_total_emitida),
-            LN = sum(lista_nominal)
-            ) %&gt;%
-  mutate(Ganador = case_when(
-    PAN &gt; PRI ~ &quot;PAN&quot;,
-    PAN &lt; PRI ~ &quot;PRI&quot;,
-    TRUE ~ &quot;Empate&quot;)
-    )</code></pre>
-<pre><code>## `summarise()` ungrouping output (override with `.groups` argument)</code></pre>
-<pre><code>## # A tibble: 72 x 10
-##    municipio      PAN   PRI   PRD OTROS NULOS Válidos Total    LN Ganador
-##    &lt;chr&gt;        &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;chr&gt;  
-##  1 ACONCHI        867   876    14    42    29    1799  1828  2271 PRI    
-##  2 AGUA PRIETA  17431 10554   495  1105   568   29585 30153 60676 PAN    
-##  3 ALAMOS        5560  6478    70   179   241   12287 12528 18909 PRI    
-##  4 ALTAR         1417  2053   721   177    71    4368  4439  6217 PRI    
-##  5 ARIVECHI       448   563     6    16    11    1033  1044  1278 PRI    
-##  6 ARIZPE         948  1145   260     8    24    2361  2385  2846 PRI    
-##  7 ATIL           291   306     1    13    13     611   624   740 PRI    
-##  8 BACADEHUACHI   335   541     5     8    22     889   911  1033 PRI    
-##  9 BACANORA       470   568     8    25    13    1071  1084  1605 PRI    
-## 10 BACERAC        473   366   125     3    11     967   978  1130 PAN    
-## # … with 62 more rows</code></pre>
-</div>
-</div>
-<div id="anexos" class="section level2">
-<h2>Anexos</h2>
-<div id="tipos-de-casillas" class="section level3">
-<h3>Tipos de casillas</h3>
-<ul>
-<li><p>Casilla básica: Se instalan en secciones que tienen un número no mayor a 750 electores.</p></li>
-<li><p>Casilla contigua: Cuando el número de electores de la sección es superior a 750, éstas se instalan.</p></li>
-<li><p>Casilla extraordinaria: Atienden a residentes de una sección, que por condiciones de vías de comunicación o socio culturales, tengan difícil acceso.</p></li>
-<li><p>Casillas especiales: Se instalan para que los electores fuera de la sección correspondiente a su domicilio puedan votar.</p></li>
-</ul>
-<p><a href="https://portalanterior.ine.mx/archivos2/Alterna/2016/PREP/CentroDeAyuda/Extraordinaria/rsc/pdf/tipos_casillas.pdf" class="uri">https://portalanterior.ine.mx/archivos2/Alterna/2016/PREP/CentroDeAyuda/Extraordinaria/rsc/pdf/tipos_casillas.pdf</a></p>
-</div>
+<pre><code>##     dif.PRI           dif.PAN          dif.PRD      
+##  Min.   :-0.4351   Min.   :0.1309   Min.   :0.2027  
+##  1st Qu.:-0.4351   1st Qu.:0.1309   1st Qu.:0.2027  
+##  Median :-0.4351   Median :0.1309   Median :0.2027  
+##  Mean   :-0.4351   Mean   :0.1309   Mean   :0.2027  
+##  3rd Qu.:-0.4351   3rd Qu.:0.1309   3rd Qu.:0.2027  
+##  Max.   :-0.4351   Max.   :0.1309   Max.   :0.2027</code></pre>
 </div>
 
 
