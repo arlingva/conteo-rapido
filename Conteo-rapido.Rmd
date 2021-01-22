@@ -121,45 +121,13 @@ proc.time()-t  # calcula tiempo: final
 simulacionSIST <- data.frame(simulacionSIST * 100)
 ```
 
-Se calculan las diferencias entre lo estimado y el valor real
-
 ```{r}
-simulacionMAS <- simulacionMAS %>%
-  mutate(dif.PRI = PRI - Global$PRI,
-         dif.PAN = PAN - Global$PAN,
-         dif.PRD = PRD - Global$PRD)
-```
-
-### Error cuadrático medio
-
-```{r}
-simulacionMAS %>%
-  summarise(ECM.PRI = sum(dif.PRI^2)/M,
-            ECM.PAN = sum(dif.PAN^2)/M,
-            ECM.PRD = sum(dif.PRD^2)/M)
+calculaECM(simulacionMAS)
+calculaECM(simulacionSIST)
 ```
 
 ```{r}
 summary(simulacionMAS[4:6])
-```
-
-
-Se calculan las diferencias entre lo estimado y el valor real
-
-```{r}
-simulacionSIST <- simulacionSIST %>%
-  mutate(dif.PRI = PRI - Global$PRI,
-         dif.PAN = PAN - Global$PAN,
-         dif.PRD = PRD - Global$PRD)
-```
-
-### Error cuadrático medio
-
-```{r}
-simulacionSIST %>%
-  summarise(ECM.PRI = sum(dif.PRI^2)/M,
-            ECM.PAN = sum(dif.PAN^2)/M,
-            ECM.PRD = sum(dif.PRD^2)/M)
 ```
 
 ```{r}
@@ -176,86 +144,3 @@ summary(simulacionSIST[4:6])
 
 
 
-## Análisis exploratorio de datos
-
-Confirmar que el cálculo "total_coalicion" sea correcto
-
-TOTAL COALICIÓN = PRI	+ PVEM + PANAL + PRI-PVEM-PANAL + PRI-PVEM +	PRI-PANAL +	PVEM-PANAL
-
-```{r}
-gobernador2015 %>%
-  transmute(validaCoalicion = total_coalicion
-            -(pri	+ pvem + panal +
-              pri_pvem_panal + pri_pvem +	pri_panal + 
-              pvem_panal)) %>% 
-  summary()
-```
-
-Secciones sin información en resultados por casilla
-
-```{r}
-UbicacionCasillas2015 %>%
-  mutate(seccion_casilla = paste(seccion, casilla)) %>%
-  select(municipio, seccion_casilla) %>%
-  filter(seccion_casilla %notin% gobernador2015$seccion_casilla)
-```
-
-### Resultados por municipio
-
-```{r}
-gobernador2015 %>%
-  group_by(municipio) %>%
-  summarise(PAN = sum(pan),
-            PRI = sum(total_coalicion),
-            PRD = sum(prd),
-            PT = sum(pt),
-            MORENA = sum(morena),
-            Humanista = sum(humanista),
-            EncuentroSocial = sum(encuentro_social),
-            NoRegistrado = sum(candidato_no_registrado),
-            Nulos = sum(votos_nulos),
-            Validos = sum(total_votos_validos),
-            Total = sum(votacion_total_emitida)
-            ) %>%
-  mutate(Ganador = case_when(
-    PAN > PRI ~ "PAN",
-    PAN < PRI ~ "PRI",
-    TRUE ~ "Empate")
-    )
-```
-
-Se agrupan el resto de los partidos
-
-```{r}
-gobernador2015 %>%
-  group_by(municipio) %>%
-  summarise(PAN = sum(pan),
-            PRI = sum(total_coalicion),
-            PRD = sum(prd),
-            OTROS = sum(pt) + sum(morena) + sum(humanista) + sum(encuentro_social),
-            NULOS = sum(candidato_no_registrado) + sum(votos_nulos),
-            Válidos = sum(total_votos_validos),
-            Total = sum(votacion_total_emitida),
-            LN = sum(lista_nominal)
-            ) %>%
-  mutate(Ganador = case_when(
-    PAN > PRI ~ "PAN",
-    PAN < PRI ~ "PRI",
-    TRUE ~ "Empate")
-    )
-```
-
-
-## Anexos
-
-### Tipos de casillas
-
-- Casilla básica: Se instalan en secciones que tienen un número no mayor a 750 electores.
-
-- Casilla contigua: Cuando el número de electores de la sección es superior a 750, éstas se instalan.
-
-- Casilla extraordinaria: Atienden a residentes de una sección, que por condiciones de vías de comunicación o socio culturales, tengan difícil acceso.
-
-- Casillas especiales: Se instalan para que los electores fuera de la sección correspondiente a su domicilio puedan votar.
-
-https://portalanterior.ine.mx/archivos2/Alterna/2016/PREP/CentroDeAyuda/Extraordinaria/rsc/pdf/tipos_casillas.pdf
