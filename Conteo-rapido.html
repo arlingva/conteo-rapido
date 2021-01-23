@@ -454,10 +454,13 @@ UbicacionCasillas2015 &lt;- read_excel(&quot;data/UbicacionCasillas2015.xlsx&quo
             PRD = sum(prd) / sum(votacion_total_emitida)) -&gt; Global
 
 # Resultado global
-Global &lt;- Global * 100</code></pre>
+Global &lt;- Global * 100
+Global</code></pre>
+<pre><code>##        PRI      PAN      PRD
+## 1 47.58621 40.62835 3.380378</code></pre>
 <pre class="r"><code>total.casillas &lt;- length(gobernador2015$seccion_casilla)
 N &lt;- 370          # Número de secciones
-M &lt;- 10000        # Número de repeticiones</code></pre>
+M &lt;- 1000        # Número de repeticiones</code></pre>
 </div>
 <div id="simulación-muestreo-aleatorio-simple" class="section level2">
 <h2>Simulación: Muestreo aleatorio simple</h2>
@@ -477,7 +480,7 @@ for(i in 1:M){
 }
 proc.time()-t  # calcula tiempo: final </code></pre>
 <pre><code>##    user  system elapsed 
-##  79.974   1.173  91.520</code></pre>
+##   7.740   0.104   7.988</code></pre>
 <pre class="r"><code># Se convierte a data frame, se multiplica por 100 y se calcula error
 simulacionMAS &lt;- data.frame(simulacionMAS * 100) %&gt;%
     mutate(dif.PRI = PRI - Global$PRI,
@@ -489,22 +492,20 @@ simulacionMAS &lt;- data.frame(simulacionMAS * 100) %&gt;%
 <pre class="r"><code># Se calcula k, la posición de la casilla inicial se elige al azar entre 1 y k
 k &lt;- round(total.casillas/N,0)
 
-# Selección de posición de casilla inicial
-casilla0 &lt;- sample(1:k, 1)
-
-# Seleccion de posición del resto de casillas
-posicion &lt;- c()
-for(i in 1: N-1) {
-  posicion &lt;- c(posicion, casilla0 + i*k)
-}
-#length(seleccion.casillas)
-
 # Crea una matriz vacía
 simulacionSIST &lt;- matrix(rep(0, length(Global)*M), nrow = M)
 colnames(simulacionSIST) &lt;- c(&quot;PRI&quot;, &quot;PAN&quot;, &quot;PRD&quot;) 
 
 t &lt;- proc.time() # calcula tiempo: inicio 
 for(i in 1:M){
+  # Selección de posición de casilla inicial
+  casilla0 &lt;- sample(1:k, 1)
+
+  # Seleccion de posición del resto de casillas
+  posicion &lt;- c()
+  for(j in 1: N-1) {
+    posicion &lt;- c(posicion, casilla0 + j*k)
+  }
   muestra &lt;- gobernador2015$seccion_casilla[posicion]
   gobernador2015 %&gt;%
   filter(seccion_casilla %in% muestra) %&gt;%
@@ -515,46 +516,105 @@ for(i in 1:M){
 }
 proc.time()-t  # calcula tiempo: final </code></pre>
 <pre><code>##    user  system elapsed 
-##  76.364   0.995  82.971</code></pre>
+##   7.932   0.128   8.207</code></pre>
 <pre class="r"><code># Se convierte a data frame, se multiplica por 100 y se calcula error
 simulacionSIST &lt;- data.frame(simulacionSIST * 100) %&gt;%
     mutate(dif.PRI = PRI - Global$PRI,
            dif.PAN = PAN - Global$PAN,
            dif.PRD = PRD - Global$PRD)</code></pre>
 </div>
+<div id="simulación-estratificado-afijación-simple" class="section level2">
+<h2>Simulación: Estratificado, afijación simple</h2>
+<pre class="r"><code>distritos &lt;- unique(gobernador2015$distrito_local)
+num.distritos &lt;- length(distritos)
+
+casillas.xDistrito &lt;- round(N / num.distritos)
+casillas.xDistrito * num.distritos</code></pre>
+<pre><code>## [1] 378</code></pre>
+<pre class="r"><code># Crea una matriz vacía
+simulacionESTR.simple &lt;- matrix(rep(0, length(Global)*M), nrow = M)
+colnames(simulacionESTR.simple) &lt;- c(&quot;PRI&quot;, &quot;PAN&quot;, &quot;PRD&quot;) 
+
+t &lt;- proc.time() # calcula tiempo: inicio 
+for(i in 1:M){
+  # selección de una muestra
+  muestra &lt;- c()
+  for(j in 1: num.distritos){
+    gobernador2015 %&gt;%
+    filter(distrito_local == distritos[j]) %&gt;%
+    select(seccion_casilla) -&gt; df.distrito
+    muestra &lt;- c(muestra, sample(df.distrito$seccion_casilla, casillas.xDistrito))
+  } 
+  
+  gobernador2015 %&gt;%
+  filter(seccion_casilla %in% muestra) %&gt;%
+  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
+            PAN = sum(pan) / sum(votacion_total_emitida),
+            PRD = sum(prd) / sum(votacion_total_emitida)) %&gt;%
+    as.numeric() -&gt; simulacionESTR.simple[i, ]
+}
+proc.time()-t  # calcula tiempo: final </code></pre>
+<pre><code>##    user  system elapsed 
+## 110.369   0.858 112.448</code></pre>
+<pre class="r"><code># Se convierte a data frame, se multiplica por 100 y se calcula error
+simulacionESTR.simple &lt;- data.frame(simulacionESTR.simple * 100) %&gt;%
+    mutate(dif.PRI = PRI - Global$PRI,
+           dif.PAN = PAN - Global$PAN,
+           dif.PRD = PRD - Global$PRD)</code></pre>
+</div>
+<div id="simulación-estratificado-afijación-proporcional" class="section level2">
+<h2>Simulación: Estratificado, afijación proporcional</h2>
+<pre class="r"><code>df.distritos &lt;- gobernador2015 %&gt;%
+  group_by(distrito_local) %&gt;%
+  summarise(LN = sum(lista_nominal),
+            n = n(),
+            p = LN/sum(gobernador2015$lista_nominal)) %&gt;%
+  mutate(casillas.n = round(num.casillas = N * p)) %&gt;%
+  arrange(LN)</code></pre>
+<pre><code>## `summarise()` ungrouping output (override with `.groups` argument)</code></pre>
+</div>
 <div id="cálculo-de-error-cuadrático-medio" class="section level2">
 <h2>Cálculo de error cuadrático medio</h2>
-<pre class="r"><code>simulacionMAS %&gt;%
-  summarise(ECM.PRI = sum(dif.PRI^2)/M,
-            ECM.PAN = sum(dif.PAN^2)/M,
-            ECM.PRD = sum(dif.PRD^2)/M)</code></pre>
-<pre><code>##     ECM.PRI   ECM.PAN    ECM.PRD
-## 1 0.2084228 0.2304447 0.03783135</code></pre>
-<pre class="r"><code>simulacionSIST %&gt;%
-  summarise(ECM.PRI = sum(dif.PRI^2)/M,
-            ECM.PAN = sum(dif.PAN^2)/M,
-            ECM.PRD = sum(dif.PRD^2)/M)</code></pre>
-<pre><code>##     ECM.PRI    ECM.PAN    ECM.PRD
-## 1 0.1893105 0.01712545 0.04110277</code></pre>
+<pre class="r"><code>options(scipen=999)
+resumen &lt;- data.frame()
+resumen &lt;- resumen %&gt;%
+  rbind(calculaECM(simulacionMAS)) %&gt;%
+  rbind(calculaECM(simulacionSIST)) %&gt;%
+  rbind(calculaECM(simulacionESTR.simple))
+
+row.names(resumen) = c(&quot;MAS&quot;, &quot;Sistemático&quot;, &quot;Estr simple&quot;)
+resumen</code></pre>
+<pre><code>##               ECM.PRI   ECM.PAN     ECM.PRD
+## MAS         0.2093876 0.2249385 0.034823586
+## Sistemático 0.1292136 0.1315389 0.008007693
+## Estr simple 0.1972351 0.2088074 0.029109585</code></pre>
 </div>
 <div id="resumen-de-error-de-estimación" class="section level2">
 <h2>Resumen de error de estimación</h2>
 <pre class="r"><code>summary(simulacionMAS[4:6])</code></pre>
-<pre><code>##     dif.PRI             dif.PAN              dif.PRD          
-##  Min.   :-1.968067   Min.   :-1.9307020   Min.   :-0.6448127  
-##  1st Qu.:-0.316953   1st Qu.:-0.3284165   1st Qu.:-0.1320475  
-##  Median :-0.008683   Median : 0.0001774   Median :-0.0013807  
-##  Mean   :-0.002291   Mean   :-0.0011123   Mean   : 0.0007825  
-##  3rd Qu.: 0.302523   3rd Qu.: 0.3189625   3rd Qu.: 0.1292840  
-##  Max.   : 1.593004   Max.   : 1.8789208   Max.   : 0.7572049</code></pre>
+<pre><code>##     dif.PRI             dif.PAN              dif.PRD         
+##  Min.   :-1.296801   Min.   :-1.7014402   Min.   :-0.514870  
+##  1st Qu.:-0.292431   1st Qu.:-0.3062133   1st Qu.:-0.128438  
+##  Median : 0.010910   Median :-0.0002474   Median :-0.013436  
+##  Mean   : 0.006822   Mean   :-0.0037238   Mean   :-0.005175  
+##  3rd Qu.: 0.300289   3rd Qu.: 0.3158255   3rd Qu.: 0.119170  
+##  Max.   : 1.399721   Max.   : 1.6669346   Max.   : 0.565019</code></pre>
 <pre class="r"><code>summary(simulacionSIST[4:6])</code></pre>
-<pre><code>##     dif.PRI           dif.PAN          dif.PRD      
-##  Min.   :-0.4351   Min.   :0.1309   Min.   :0.2027  
-##  1st Qu.:-0.4351   1st Qu.:0.1309   1st Qu.:0.2027  
-##  Median :-0.4351   Median :0.1309   Median :0.2027  
-##  Mean   :-0.4351   Mean   :0.1309   Mean   :0.2027  
-##  3rd Qu.:-0.4351   3rd Qu.:0.1309   3rd Qu.:0.2027  
-##  Max.   :-0.4351   Max.   :0.1309   Max.   :0.2027</code></pre>
+<pre><code>##     dif.PRI            dif.PAN            dif.PRD         
+##  Min.   :-0.43510   Min.   :-0.54080   Min.   :-0.113961  
+##  1st Qu.:-0.17138   1st Qu.:-0.46861   1st Qu.:-0.040374  
+##  Median : 0.10455   Median : 0.13044   Median :-0.009652  
+##  Mean   : 0.08244   Mean   :-0.07551   Mean   : 0.013754  
+##  3rd Qu.: 0.33123   3rd Qu.: 0.14814   3rd Qu.: 0.053864  
+##  Max.   : 0.62070   Max.   : 0.39789   Max.   : 0.202738</code></pre>
+<pre class="r"><code>summary(simulacionESTR.simple[4:6])</code></pre>
+<pre><code>##     dif.PRI            dif.PAN            dif.PRD        
+##  Min.   :-0.87904   Min.   :-1.40706   Min.   :-0.48986  
+##  1st Qu.:-0.07063   1st Qu.:-0.48479   1st Qu.:-0.08805  
+##  Median : 0.20640   Median :-0.22465   Median : 0.02655  
+##  Mean   : 0.20259   Mean   :-0.21256   Mean   : 0.02701  
+##  3rd Qu.: 0.48005   3rd Qu.: 0.07085   3rd Qu.: 0.14157  
+##  Max.   : 1.38003   Max.   : 1.25006   Max.   : 0.57029</code></pre>
 </div>
 
 

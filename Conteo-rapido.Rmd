@@ -42,7 +42,6 @@ gobernador2015 <- UbicacionCasillas2015 %>%
          distrito_local = distrito_local.x)
 ```
 
-
 ## Resultados globales
 
 ```{r}
@@ -59,7 +58,7 @@ Global
 ```{r}
 total.casillas <- length(gobernador2015$seccion_casilla)
 N <- 370          # Número de secciones
-M <- 10000        # Número de repeticiones
+M <- 10        # Número de repeticiones
 ```
 
 ## Simulación: Muestreo aleatorio simple
@@ -94,22 +93,20 @@ simulacionMAS <- data.frame(simulacionMAS * 100) %>%
 # Se calcula k, la posición de la casilla inicial se elige al azar entre 1 y k
 k <- round(total.casillas/N,0)
 
-# Selección de posición de casilla inicial
-casilla0 <- sample(1:k, 1)
-
-# Seleccion de posición del resto de casillas
-posicion <- c()
-for(i in 1: N-1) {
-  posicion <- c(posicion, casilla0 + i*k)
-}
-#length(seleccion.casillas)
-
 # Crea una matriz vacía
 simulacionSIST <- matrix(rep(0, length(Global)*M), nrow = M)
 colnames(simulacionSIST) <- c("PRI", "PAN", "PRD") 
 
 t <- proc.time() # calcula tiempo: inicio 
 for(i in 1:M){
+  # Selección de posición de casilla inicial
+  casilla0 <- sample(1:k, 1)
+
+  # Seleccion de posición del resto de casillas
+  posicion <- c()
+  for(j in 1: N-1) {
+    posicion <- c(posicion, casilla0 + j*k)
+  }
   muestra <- gobernador2015$seccion_casilla[posicion]
   gobernador2015 %>%
   filter(seccion_casilla %in% muestra) %>%
@@ -127,21 +124,86 @@ simulacionSIST <- data.frame(simulacionSIST * 100) %>%
            dif.PRD = PRD - Global$PRD)
 ```
 
+## Simulación: Estratificado, afijación simple
+
+```{r}
+df.distritos <- gobernador2015 %>%
+  group_by(distrito_local) %>%
+  summarise(LN = sum(lista_nominal),
+            n = n(),
+            p = LN/sum(gobernador2015$lista_nominal)) %>%
+  mutate(casillas.n = round(num.casillas = N * p)) %>%
+  arrange(distrito_local)
+```
+
+```{r}
+M <- 2
+distritos <- df.distritos$distrito_local
+num.distritos <- length(distritos)
+
+casillas.xDistrito <- round(N / num.distritos)
+casillas.xDistrito * num.distritos
+
+# Crea una matriz vacía
+simulacionESTR.simple <- matrix(rep(0, length(Global)*M), nrow = M)
+colnames(simulacionESTR.simple) <- c("PRI", "PAN", "PRD") 
+
+t <- proc.time() # calcula tiempo: inicio 
+for(i in 1:M){
+  
+  # selección de una muestra
+  muestra <- c() 
+  for(j in 1: num.distritos){
+    gobernador2015 %>%
+    filter(distrito_local == distritos[j]) %>%
+    select(seccion_casilla) -> df.temp
+    muestra <- c(muestra, sample(df.temp$seccion_casilla, casillas.xDistrito))
+  } 
+  
+  # Crea un data frame temporal con estimadores para cada estrato
+  df.temporal <- gobernador2015 %>%
+    filter(seccion_casilla %in% muestra) %>%
+    group_by(distrito_local) %>% 
+    summarise(PRI = sum(total_coalicion)/ sum(votacion_total_emitida),
+            PAN = sum(pan) / sum(votacion_total_emitida),
+            PRD = sum(prd) / sum(votacion_total_emitida)) 
+
+  # Agrega información de distritos; específicamente, el número de casillas
+  df.temporal <- df.distritos %>%
+    left_join(df.temporal) %>%
+    summarise(estPRI = n %*% PRI / total.casillas,
+              estPAN = n %*% PAN / total.casillas,
+              estPRD = n %*% PRD / total.casillas) %>%
+    as.numeric() -> simulacionESTR.simple[i, ]
+}
+proc.time()-t  # calcula tiempo: final 
+
+rm(muestra, df.temporal, df.temp)
+
+# Se convierte a data frame, se multiplica por 100 y se calcula error
+simulacionESTR.simple <- data.frame(simulacionESTR.simple * 100) %>%
+    mutate(dif.PRI = PRI - Global$PRI,
+           dif.PAN = PAN - Global$PAN,
+           dif.PRD = PRD - Global$PRD)
+```
+
+## Simulación: Estratificado, afijación proporcional
+
+
 ## Cálculo de error cuadrático medio
 
 ```{r}
-simulacionMAS %>%
-  summarise(ECM.PRI = sum(dif.PRI^2)/M,
-            ECM.PAN = sum(dif.PAN^2)/M,
-            ECM.PRD = sum(dif.PRD^2)/M)
+options(scipen=999)
+resumen <- data.frame()
+resumen <- resumen %>%
+  rbind(calculaECM(simulacionMAS)) %>%
+  rbind(calculaECM(simulacionSIST)) %>%
+  rbind(calculaECM(simulacionESTR.simple))
+
+row.names(resumen) = c("MAS", "Sistemático", "Estr simple")
+resumen
 ```
 
-```{r}
-simulacionSIST %>%
-  summarise(ECM.PRI = sum(dif.PRI^2)/M,
-            ECM.PAN = sum(dif.PAN^2)/M,
-            ECM.PRD = sum(dif.PRD^2)/M)
-```
 ## Resumen de error de estimación
 
 ```{r}
@@ -152,6 +214,9 @@ summary(simulacionMAS[4:6])
 summary(simulacionSIST[4:6])
 ```
 
+```{r}
+summary(simulacionESTR.simple[4:6])
+```
 
 
 
