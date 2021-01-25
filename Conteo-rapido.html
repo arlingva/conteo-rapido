@@ -451,26 +451,26 @@ UbicacionCasillas2015 &lt;- read_excel(&quot;data/UbicacionCasillas2015.xlsx&quo
 <pre class="r"><code>gobernador2015 %&gt;%
   summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
             PAN = sum(pan) / sum(votacion_total_emitida),
-            PRD = sum(prd) / sum(votacion_total_emitida)) -&gt; Global
+            PRD = sum(prd) / sum(votacion_total_emitida)) -&gt; resultadoGlobal
 
 # Resultado global
-Global &lt;- Global * 100
-Global</code></pre>
+resultadoGlobal &lt;- resultadoGlobal * 100
+resultadoGlobal</code></pre>
 <pre><code>##        PRI      PAN      PRD
 ## 1 47.58621 40.62835 3.380378</code></pre>
-<pre class="r"><code>total.casillas &lt;- length(gobernador2015$seccion_casilla)
-N &lt;- 370          # Número de secciones
-M &lt;- 1000        # Número de repeticiones</code></pre>
+<pre class="r"><code>N &lt;- length(gobernador2015$seccion_casilla)  # total de casillas
+n &lt;- 370                                     # Número de secciones en la muestra
+M &lt;- 1000                                   # Número de repeticiones</code></pre>
 </div>
 <div id="simulación-muestreo-aleatorio-simple" class="section level2">
 <h2>Simulación: Muestreo aleatorio simple</h2>
 <pre class="r"><code># Crea una matriz vacía
-simulacionMAS &lt;- matrix(rep(0, length(Global)*M), nrow = M)
+simulacionMAS &lt;- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
 colnames(simulacionMAS) &lt;- c(&quot;PRI&quot;, &quot;PAN&quot;, &quot;PRD&quot;) 
 
 t &lt;- proc.time() # calcula tiempo: inicio 
 for(i in 1:M){
-  muestra &lt;- sample(gobernador2015$seccion_casilla, N)
+  muestra &lt;- sample(gobernador2015$seccion_casilla, n)
   gobernador2015 %&gt;%
   filter(seccion_casilla %in% muestra) %&gt;%
   summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
@@ -480,20 +480,20 @@ for(i in 1:M){
 }
 proc.time()-t  # calcula tiempo: final </code></pre>
 <pre><code>##    user  system elapsed 
-##   7.740   0.104   7.988</code></pre>
+##   7.157   0.060   7.288</code></pre>
 <pre class="r"><code># Se convierte a data frame, se multiplica por 100 y se calcula error
 simulacionMAS &lt;- data.frame(simulacionMAS * 100) %&gt;%
-    mutate(dif.PRI = PRI - Global$PRI,
-           dif.PAN = PAN - Global$PAN,
-           dif.PRD = PRD - Global$PRD)</code></pre>
+    mutate(dif.PRI = PRI - resultadoGlobal$PRI,
+           dif.PAN = PAN - resultadoGlobal$PAN,
+           dif.PRD = PRD - resultadoGlobal$PRD)</code></pre>
 </div>
 <div id="simulación-muestreo-sistematizado" class="section level2">
 <h2>Simulación: Muestreo sistematizado</h2>
 <pre class="r"><code># Se calcula k, la posición de la casilla inicial se elige al azar entre 1 y k
-k &lt;- round(total.casillas/N,0)
+k &lt;- round(N/n,0)  # número de estratos
 
 # Crea una matriz vacía
-simulacionSIST &lt;- matrix(rep(0, length(Global)*M), nrow = M)
+simulacionSIST &lt;- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
 colnames(simulacionSIST) &lt;- c(&quot;PRI&quot;, &quot;PAN&quot;, &quot;PRD&quot;) 
 
 t &lt;- proc.time() # calcula tiempo: inicio 
@@ -503,7 +503,7 @@ for(i in 1:M){
 
   # Seleccion de posición del resto de casillas
   posicion &lt;- c()
-  for(j in 1: N-1) {
+  for(j in 1: n-1) {
     posicion &lt;- c(posicion, casilla0 + j*k)
   }
   muestra &lt;- gobernador2015$seccion_casilla[posicion]
@@ -516,62 +516,141 @@ for(i in 1:M){
 }
 proc.time()-t  # calcula tiempo: final </code></pre>
 <pre><code>##    user  system elapsed 
-##   7.932   0.128   8.207</code></pre>
+##   7.247   0.069   7.368</code></pre>
 <pre class="r"><code># Se convierte a data frame, se multiplica por 100 y se calcula error
 simulacionSIST &lt;- data.frame(simulacionSIST * 100) %&gt;%
-    mutate(dif.PRI = PRI - Global$PRI,
-           dif.PAN = PAN - Global$PAN,
-           dif.PRD = PRD - Global$PRD)</code></pre>
+    mutate(dif.PRI = PRI - resultadoGlobal$PRI,
+           dif.PAN = PAN - resultadoGlobal$PAN,
+           dif.PRD = PRD - resultadoGlobal$PRD)</code></pre>
 </div>
-<div id="simulación-estratificado-afijación-simple" class="section level2">
-<h2>Simulación: Estratificado, afijación simple</h2>
-<pre class="r"><code>distritos &lt;- unique(gobernador2015$distrito_local)
-num.distritos &lt;- length(distritos)
+<div id="simulación-estratificado" class="section level2">
+<h2>Simulación: Estratificado</h2>
+<p>Resumen de resultados por distrito</p>
+<pre class="r"><code>df.distritos &lt;- gobernador2015 %&gt;%
+  group_by(distrito_local) %&gt;%
+  summarise(LN = sum(lista_nominal),
+            N.dist = n(),                                   # Casillas por distrito
+            p = LN/sum(gobernador2015$lista_nominal)) %&gt;%   # Proporción
+  mutate(n.dist = round(num.casillas = n * p)) %&gt;%
+  arrange(distrito_local)</code></pre>
+<p>Sea:</p>
+<ul>
+<li><p><span class="math inline">\(L\)</span> el número de estratos</p></li>
+<li><p><span class="math inline">\(\bar{y_i}\)</span> la media muestral en el estrato <span class="math inline">\(i\)</span>, <span class="math inline">\(i= 1, \ldots, L\)</span></p></li>
+<li><p><span class="math inline">\(n_i\)</span> el tamaño de muestra</p></li>
+<li><p><span class="math inline">\(N_i\)</span> el número de casillas. <span class="math inline">\(N= N_1 + \ldots + N_L\)</span></p></li>
+</ul>
+<p>Estimador de la media poblacional <span class="math inline">\(\mu\)</span>:</p>
+<p><span class="math display">\[\bar{y}_{st} = \frac{1}{N} \sum_{i=1}^{L} N_i \bar{y_i}\]</span></p>
+<p>Estimador de la varianza de <span class="math inline">\(\bar{y}_{st}\)</span>:</p>
+<p><span class="math display">\[\hat{V} (\bar{y}_{st}) = \frac{1}{N^2} \sum_{i=1}^{L} N_{i}^{2} 
+\left(1- \frac{n_i}{N_i}\right) 
+\left(\frac{s_i^2}{n_i}\right)\]</span></p>
+<div id="afijación-simple" class="section level3">
+<h3>Afijación simple</h3>
+<pre class="r"><code>distritos &lt;- df.distritos$distrito_local
+L &lt;- length(distritos)
 
-casillas.xDistrito &lt;- round(N / num.distritos)
-casillas.xDistrito * num.distritos</code></pre>
-<pre><code>## [1] 378</code></pre>
-<pre class="r"><code># Crea una matriz vacía
-simulacionESTR.simple &lt;- matrix(rep(0, length(Global)*M), nrow = M)
+casillas.xDistrito &lt;- round(n / L)
+# Total de casillas en la muestra
+#casillas.xDistrito * num.distritos  
+
+# Crea una matriz vacía
+simulacionESTR.simple &lt;- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
 colnames(simulacionESTR.simple) &lt;- c(&quot;PRI&quot;, &quot;PAN&quot;, &quot;PRD&quot;) 
 
 t &lt;- proc.time() # calcula tiempo: inicio 
 for(i in 1:M){
   # selección de una muestra
-  muestra &lt;- c()
-  for(j in 1: num.distritos){
+  muestra &lt;- c() 
+  for(j in 1: L){
     gobernador2015 %&gt;%
     filter(distrito_local == distritos[j]) %&gt;%
-    select(seccion_casilla) -&gt; df.distrito
-    muestra &lt;- c(muestra, sample(df.distrito$seccion_casilla, casillas.xDistrito))
+    select(seccion_casilla) -&gt; df.muestra
+    muestra &lt;- c(muestra, sample(df.muestra$seccion_casilla, casillas.xDistrito))
   } 
   
-  gobernador2015 %&gt;%
-  filter(seccion_casilla %in% muestra) %&gt;%
-  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
-            PAN = sum(pan) / sum(votacion_total_emitida),
-            PRD = sum(prd) / sum(votacion_total_emitida)) %&gt;%
-    as.numeric() -&gt; simulacionESTR.simple[i, ]
+  # Crea un data frame temporal con estimadores para cada estrato
+  df.temporal &lt;- gobernador2015 %&gt;%
+    filter(seccion_casilla %in% muestra) %&gt;%
+    group_by(distrito_local) %&gt;% 
+    summarise(PRI = sum(total_coalicion)/sum(votacion_total_emitida),
+              #votos = sum(total_coalicion),
+              #total = sum(votacion_total_emitida),
+              PAN = sum(pan) / sum(votacion_total_emitida),
+              PRD = sum(prd) / sum(votacion_total_emitida))
+  
+  simulacionESTR.simple[i, ] &lt;- c(
+    estPRI = df.distritos$N.dist %*% df.temporal$PRI / N,
+    estPAN = df.distritos$N.dist %*% df.temporal$PAN / N,
+    estPRD = df.distritos$N.dist %*% df.temporal$PRD / N)
+    
+  # Agrega información de distritos; específicamente, el número de casillas
+    #df.temporal &lt;- df.distritos %&gt;%
+    #left_join(df.temporal) %&gt;%
+    #summarise(estPRI = N.dist %*% PRI / N,
+    #          estPAN = N.dist %*% PAN / N,
+    #          estPRD = N.dist %*% PRD / N) %&gt;%
+    #as.numeric() -&gt; simulacionESTR.simple[i, ]
 }
 proc.time()-t  # calcula tiempo: final </code></pre>
 <pre><code>##    user  system elapsed 
-## 110.369   0.858 112.448</code></pre>
-<pre class="r"><code># Se convierte a data frame, se multiplica por 100 y se calcula error
+## 131.410   1.720 135.848</code></pre>
+<pre class="r"><code>rm(muestra, df.temporal, df.muestra)
+
+# Se convierte a data frame, se multiplica por 100 y se calcula error
 simulacionESTR.simple &lt;- data.frame(simulacionESTR.simple * 100) %&gt;%
-    mutate(dif.PRI = PRI - Global$PRI,
-           dif.PAN = PAN - Global$PAN,
-           dif.PRD = PRD - Global$PRD)</code></pre>
+    mutate(dif.PRI = PRI - resultadoGlobal$PRI,
+           dif.PAN = PAN - resultadoGlobal$PAN,
+           dif.PRD = PRD - resultadoGlobal$PRD)</code></pre>
 </div>
-<div id="simulación-estratificado-afijación-proporcional" class="section level2">
-<h2>Simulación: Estratificado, afijación proporcional</h2>
-<pre class="r"><code>df.distritos &lt;- gobernador2015 %&gt;%
-  group_by(distrito_local) %&gt;%
-  summarise(LN = sum(lista_nominal),
-            n = n(),
-            p = LN/sum(gobernador2015$lista_nominal)) %&gt;%
-  mutate(casillas.n = round(num.casillas = N * p)) %&gt;%
-  arrange(LN)</code></pre>
-<pre><code>## `summarise()` ungrouping output (override with `.groups` argument)</code></pre>
+<div id="simulación-estratificado-afijación-proporcional" class="section level3">
+<h3>Simulación: Estratificado, afijación proporcional</h3>
+<pre class="r"><code># Crea una matriz vacía
+simulacionESTR.prop &lt;- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
+colnames(simulacionESTR.prop) &lt;- c(&quot;PRI&quot;, &quot;PAN&quot;, &quot;PRD&quot;) 
+
+t &lt;- proc.time() # calcula tiempo: inicio 
+for(i in 1:M){
+  
+  # selección de una muestra
+  muestra &lt;- c() 
+  for(j in 1: L){
+    gobernador2015 %&gt;%
+    filter(distrito_local == distritos[j]) %&gt;%
+    select(seccion_casilla) -&gt; df.muestra
+    muestra &lt;- c(muestra, sample(df.muestra$seccion_casilla, df.distritos$n.dist))
+  } 
+  
+  # Crea un data frame temporal con estimadores para cada estrato
+  df.temporal &lt;- gobernador2015 %&gt;%
+    filter(seccion_casilla %in% muestra) %&gt;%
+    group_by(distrito_local) %&gt;% 
+    summarise(PRI = sum(total_coalicion)/sum(votacion_total_emitida),
+              #votos = sum(total_coalicion),
+              #total = sum(votacion_total_emitida),
+              PAN = sum(pan) / sum(votacion_total_emitida),
+              PRD = sum(prd) / sum(votacion_total_emitida)) 
+
+  # Agrega información de distritos; específicamente, el número de casillas
+  df.temporal &lt;- df.distritos %&gt;%
+    left_join(df.temporal) %&gt;%
+    summarise(estPRI = N.dist %*% PRI / N,
+              estPAN = N.dist %*% PAN / N,
+              estPRD = N.dist %*% PRD / N) %&gt;%
+    as.numeric() -&gt; simulacionESTR.prop[i, ]
+}
+proc.time()-t  # calcula tiempo: final </code></pre>
+<pre><code>##    user  system elapsed 
+## 136.519   1.473 440.743</code></pre>
+<pre class="r"><code>rm(muestra, df.temporal, df.muestra)
+
+# Se convierte a data frame, se multiplica por 100 y se calcula error
+simulacionESTR.prop &lt;- data.frame(simulacionESTR.prop * 100) %&gt;%
+    mutate(dif.PRI = PRI - resultadoGlobal$PRI,
+           dif.PAN = PAN - resultadoGlobal$PAN,
+           dif.PRD = PRD - resultadoGlobal$PRD)</code></pre>
+</div>
 </div>
 <div id="cálculo-de-error-cuadrático-medio" class="section level2">
 <h2>Cálculo de error cuadrático medio</h2>
@@ -580,41 +659,43 @@ resumen &lt;- data.frame()
 resumen &lt;- resumen %&gt;%
   rbind(calculaECM(simulacionMAS)) %&gt;%
   rbind(calculaECM(simulacionSIST)) %&gt;%
-  rbind(calculaECM(simulacionESTR.simple))
+  rbind(calculaECM(simulacionESTR.simple)) %&gt;%
+  rbind(calculaECM(simulacionESTR.prop))
 
-row.names(resumen) = c(&quot;MAS&quot;, &quot;Sistemático&quot;, &quot;Estr simple&quot;)
+row.names(resumen) = c(&quot;MAS&quot;, &quot;Sistemático&quot;, &quot;Estr simple&quot;, &quot;Estr prop&quot;)
 resumen</code></pre>
 <pre><code>##               ECM.PRI   ECM.PAN     ECM.PRD
-## MAS         0.2093876 0.2249385 0.034823586
-## Sistemático 0.1292136 0.1315389 0.008007693
-## Estr simple 0.1972351 0.2088074 0.029109585</code></pre>
+## MAS         0.2054421 0.2340726 0.036495857
+## Sistemático 0.1303879 0.1295516 0.008608406
+## Estr simple 0.1626780 0.1514221 0.031310213
+## Estr prop   0.1719731 0.1526277 0.033832428</code></pre>
 </div>
 <div id="resumen-de-error-de-estimación" class="section level2">
 <h2>Resumen de error de estimación</h2>
 <pre class="r"><code>summary(simulacionMAS[4:6])</code></pre>
-<pre><code>##     dif.PRI             dif.PAN              dif.PRD         
-##  Min.   :-1.296801   Min.   :-1.7014402   Min.   :-0.514870  
-##  1st Qu.:-0.292431   1st Qu.:-0.3062133   1st Qu.:-0.128438  
-##  Median : 0.010910   Median :-0.0002474   Median :-0.013436  
-##  Mean   : 0.006822   Mean   :-0.0037238   Mean   :-0.005175  
-##  3rd Qu.: 0.300289   3rd Qu.: 0.3158255   3rd Qu.: 0.119170  
-##  Max.   : 1.399721   Max.   : 1.6669346   Max.   : 0.565019</code></pre>
+<pre><code>##     dif.PRI             dif.PAN            dif.PRD         
+##  Min.   :-1.834578   Min.   :-1.69667   Min.   :-0.653924  
+##  1st Qu.:-0.303338   1st Qu.:-0.33332   1st Qu.:-0.126524  
+##  Median :-0.001864   Median :-0.01806   Median : 0.005716  
+##  Mean   : 0.004353   Mean   :-0.01286   Mean   : 0.006995  
+##  3rd Qu.: 0.317147   3rd Qu.: 0.30264   3rd Qu.: 0.131091  
+##  Max.   : 1.699319   Max.   : 1.71903   Max.   : 0.654217</code></pre>
 <pre class="r"><code>summary(simulacionSIST[4:6])</code></pre>
 <pre><code>##     dif.PRI            dif.PAN            dif.PRD         
 ##  Min.   :-0.43510   Min.   :-0.54080   Min.   :-0.113961  
 ##  1st Qu.:-0.17138   1st Qu.:-0.46861   1st Qu.:-0.040374  
 ##  Median : 0.10455   Median : 0.13044   Median :-0.009652  
-##  Mean   : 0.08244   Mean   :-0.07551   Mean   : 0.013754  
-##  3rd Qu.: 0.33123   3rd Qu.: 0.14814   3rd Qu.: 0.053864  
+##  Mean   : 0.06893   Mean   :-0.06959   Mean   : 0.019294  
+##  3rd Qu.: 0.33123   3rd Qu.: 0.14814   3rd Qu.: 0.071071  
 ##  Max.   : 0.62070   Max.   : 0.39789   Max.   : 0.202738</code></pre>
 <pre class="r"><code>summary(simulacionESTR.simple[4:6])</code></pre>
-<pre><code>##     dif.PRI            dif.PAN            dif.PRD        
-##  Min.   :-0.87904   Min.   :-1.40706   Min.   :-0.48986  
-##  1st Qu.:-0.07063   1st Qu.:-0.48479   1st Qu.:-0.08805  
-##  Median : 0.20640   Median :-0.22465   Median : 0.02655  
-##  Mean   : 0.20259   Mean   :-0.21256   Mean   : 0.02701  
-##  3rd Qu.: 0.48005   3rd Qu.: 0.07085   3rd Qu.: 0.14157  
-##  Max.   : 1.38003   Max.   : 1.25006   Max.   : 0.57029</code></pre>
+<pre><code>##     dif.PRI           dif.PAN            dif.PRD        
+##  Min.   :-1.3646   Min.   :-1.34921   Min.   :-0.52923  
+##  1st Qu.:-0.3737   1st Qu.:-0.29558   1st Qu.:-0.18797  
+##  Median :-0.1339   Median :-0.04121   Median :-0.08530  
+##  Mean   :-0.1270   Mean   :-0.03141   Mean   :-0.07221  
+##  3rd Qu.: 0.1285   3rd Qu.: 0.22981   3rd Qu.: 0.04141  
+##  Max.   : 1.3330   Max.   : 1.26744   Max.   : 0.40888</code></pre>
 </div>
 
 
