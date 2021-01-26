@@ -45,15 +45,15 @@ estcomp <- ggplot(data=simulacionESTR.simple) +
        caption = NULL, subtitle = "Resultados de mil simulaciones")
 ggsave("Gráficos/estcomp.png",estcomp, bg = "transparent", height = 12, width = 18, units = "cm", dpi = 800, type = 'cairo')
 
-sistcomp <- ggplot(data=simulacionSIST) +
-  geom_density(aes(x=PRI, fill="PRI"),color="red",  alpha=0.5)+
-  geom_density(aes(x=PAN, fill="PAN"), color="blue", alpha=0.5)+
-  scale_fill_manual(breaks = c("PRI", "PAN"),
-                    values=c("red", "blue")) +
-  theme_bw() + Tema +
-  labs(fill = "Partido", color= NULL, y = "Densidad", x = "% votación", title = "Simulación: Muestreo sistemático",
-       caption = NULL, subtitle = "Resultados de mil simulaciones")
-ggsave("Gráficos/sistcomp.png",sistcomp, bg = "transparent", height = 12, width = 18, units = "cm", dpi = 800, type = 'cairo')
+# sistcomp <- ggplot(data=simulacionSIST) +
+#   geom_density(aes(x=PRI, fill="PRI"),color="red",  alpha=0.5)+
+#   geom_density(aes(x=PAN, fill="PAN"), color="blue", alpha=0.5)+
+#   scale_fill_manual(breaks = c("PRI", "PAN"),
+#                     values=c("red", "blue")) +
+#   theme_bw() + Tema +
+#   labs(fill = "Partido", color= NULL, y = "Densidad", x = "% votación", title = "Simulación: Muestreo sistemático",
+#        caption = NULL, subtitle = "Resultados de mil simulaciones")
+# ggsave("Gráficos/sistcomp.png",sistcomp, bg = "transparent", height = 12, width = 18, units = "cm", dpi = 800, type = 'cairo')
 
 maserror <- ggplot(data=simulacionMAS, aes(x=dif.PRI^2)) +
   geom_histogram(bins=50, color="red", fill = "red", alpha=0.5)+
@@ -63,13 +63,13 @@ maserror <- ggplot(data=simulacionMAS, aes(x=dif.PRI^2)) +
        caption = NULL, subtitle = "Errores de mil simulaciones respecto al resultado observado")
 ggsave("Gráficos/maserror.png",maserror, bg = "transparent", height = 12, width = 18, units = "cm", dpi = 800, type = 'cairo')
 
-sisterror <- ggplot(data=simulacionSIST, aes(x=dif.PRI^2)) +
-  geom_histogram(bins=50, color="red", fill = "red", alpha=0.5)+
-  scale_y_continuous(labels = comma) + 
-  theme_bw() + Tema +
-  labs(fill = "Partido", color= NULL, y = "Observaciones", x = "Diferencia al cuadrado", title = "Simulación: Muestreo sistemático",
-       caption = NULL, subtitle = "Errores de mil simulaciones respecto al resultado observado")
-ggsave("Gráficos/sisterror.png",sisterror, bg = "transparent", height = 12, width = 18, units = "cm", dpi = 800, type = 'cairo')
+# sisterror <- ggplot(data=simulacionSIST, aes(x=dif.PRI^2)) +
+#   geom_histogram(bins=50, color="red", fill = "red", alpha=0.5)+
+#   scale_y_continuous(labels = comma) + 
+#   theme_bw() + Tema +
+#   labs(fill = "Partido", color= NULL, y = "Observaciones", x = "Diferencia al cuadrado", title = "Simulación: Muestreo sistemático",
+#        caption = NULL, subtitle = "Errores de mil simulaciones respecto al resultado observado")
+# ggsave("Gráficos/sisterror.png",sisterror, bg = "transparent", height = 12, width = 18, units = "cm", dpi = 800, type = 'cairo')
 
 
 estrerror <- ggplot(data=simulacionESTR.simple, aes(x=dif.PRI^2)) +
@@ -79,4 +79,37 @@ estrerror <- ggplot(data=simulacionESTR.simple, aes(x=dif.PRI^2)) +
   labs(fill = "Partido", color= NULL, y = "Observaciones", x = "Diferencia al cuadrado", title = "Simulación: Muestreo estratificado",
        caption = NULL, subtitle = "Errores de mil simulaciones respecto al resultado observado")
 ggsave("Gráficos/estrerror.png",estrerror, bg = "transparent", height = 12, width = 18, units = "cm", dpi = 800, type = 'cairo')
+
+resumen <- resumen %>% tibble::rownames_to_column()  %>% rename(muestreo=rowname)
+resumen2 <- data.frame(t(resumen[-1]))
+colnames(resumen2) <- resumen[, 1]
+
+intervaloMAS <- simulacionMAS %>% summarise(PRI= mean(PRI), PAN=mean(PAN), PRD=mean(PRD)) %>% 
+  gather("Partido", "Promedio") %>% mutate(Máximo=Promedio+(3*(sqrt(as.double(resumen2$MAS)))), Mínimo=Promedio-(3*(sqrt(as.double(resumen2$MAS))))) %>% 
+  filter(Partido!="PRD")
+intervaloestr <- simulacionESTR.simple %>% summarise(PRI= mean(PRI), PAN=mean(PAN), PRD=mean(PRD))%>% 
+  gather("Partido", "Promedio") %>%  mutate(Máximo=Promedio+(3*sqrt(as.double(resumen2$Sistemático))), Mínimo=Promedio-(3*sqrt(as.double(resumen2$Sistemático)))) %>% 
+  filter(Partido!="PRD")
+
+
+
+
+intervalMAS <- ggplot(data=intervaloMAS, aes(y=Partido)) +
+  geom_point(aes(x=Promedio),color="red",fill="red",  alpha=0.5)+
+  geom_point(aes(x=Mínimo),color="blue", fill="blue", alpha=0.5)+
+  geom_point(aes(x=Máximo),color="blue", fill="blue",  alpha=0.5)+
+  theme_bw() + Tema +
+  labs(fill = NULL, color= NULL, y = "% votación", x = "Partido", title = "Simulación: Muestreo aleatorio simple",
+       caption = NULL, subtitle = "Intervalo de confianza")
+ggsave("Gráficos/masinter.png",intervalMAS , bg = "transparent", height = 12, width = 18, units = "cm", dpi = 800, type = 'cairo')
+
+intervalestr <- ggplot(data=intervaloestr, aes(y=Partido)) +
+  geom_point(aes(x=Promedio),color="red",fill="red",  alpha=0.5)+
+  geom_point(aes(x=Mínimo),color="blue", fill="blue", alpha=0.5)+
+  geom_point(aes(x=Máximo),color="blue", fill="blue",  alpha=0.5)+
+  theme_bw() + Tema +
+  labs(fill = NULL, color= NULL, y = "% votación", x = "Partido", title = "Simulación: Muestreo estratificado",
+       caption = NULL, subtitle = "Intervalo de confianza")
+ggsave("Gráficos/estrinter.png",intervalestr, bg = "transparent", height = 12, width = 18, units = "cm", dpi = 800, type = 'cairo')
+
 
