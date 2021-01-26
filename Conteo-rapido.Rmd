@@ -16,7 +16,7 @@ library(kableExtra)
 
 rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
-
+source("funciones/muestra.R")
 source("funciones/calculaECM.R")
 ```
 
@@ -57,8 +57,8 @@ resultadoGlobal
 
 ```{r}
 N <- length(gobernador2015$seccion_casilla)  # total de casillas
-n <- 370                                     # Número de secciones en la muestra
-M <- 1000                                   # Número de repeticiones
+n <- muestra(N)                              # Número de secciones en la muestra
+M <- 1000                                    # Número de repeticiones
 ```
 
 ## Simulación: Muestreo aleatorio simple
