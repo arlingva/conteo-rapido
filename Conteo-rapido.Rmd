@@ -22,12 +22,14 @@ library(miniUI)
 library(units)
 library(ggfortify)
 library(cowplot)
+library(magrittr)
 library("Cairo")
 
 rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source("funciones/muestra.R")
 source("funciones/calculaECM.R")
+source("funciones/graficaHistograma.R")
 ```
 
 ## Lectura de datos
@@ -42,7 +44,9 @@ UbicacionCasillas2015 <- read_excel("data/UbicacionCasillas2015.xlsx", skip = 4)
 
 casillas_sonora <- read.csv("data/casillas_sonora.csv")  %>%
   select(seccion, casilla_tipo) %>%
-  distinct(seccion, casilla_tipo)
+  distinct(seccion, casilla_tipo) %>%
+  rbind(c(608, "RURAL"))
+casillas_sonora$seccion %<>% as.numeric()
 ```
 
 Se agrega lista nominal a la tabla de resultados por casilla
@@ -58,6 +62,7 @@ gobernador2015 <- UbicacionCasillas2015 %>%
 gobernador2015 <- casillas_sonora %>%
   left_join(gobernador2015, ., by = "seccion") %>%
   mutate(distrito_tipo = paste(distrito_local,casilla_tipo))
+rm(casillas_sonora)
 ```
 
 ## Resultados globales
@@ -97,6 +102,7 @@ for(i in 1:M){
     as.numeric() -> simulacionMAS[i, ]
 }
 proc.time()-t  # calcula tiempo: final 
+rm(muestra)
 
 # Se convierte a data frame, se multiplica por 100 y se calcula error
 simulacionMAS <- data.frame(simulacionMAS * 100) %>%
@@ -134,6 +140,7 @@ for(i in 1:M){
     as.numeric() -> simulacionSIST[i, ]
 }
 proc.time()-t  # calcula tiempo: final 
+rm(muestra)
 
 # Se convierte a data frame, se multiplica por 100 y se calcula error
 simulacionSIST <- data.frame(simulacionSIST * 100) %>%
@@ -150,7 +157,7 @@ Resumen de resultados por distrito
 df.distritos <- gobernador2015 %>%
   group_by(distrito_local) %>%
   summarise(LN = sum(lista_nominal),
-            N.dist = n(),                                   # Casillas por distrito
+            N.dist = n(),           # Casillas por distrito
             p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
   mutate(n.dist = round(num.casillas = n * p)) %>%
   arrange(distrito_local)
@@ -188,8 +195,6 @@ distritos <- df.distritos$distrito_local
 L <- length(distritos)
 
 casillas.xDistrito <- round(n / L)
-# Total de casillas en la muestra
-#casillas.xDistrito * num.distritos  
 
 # Crea una matriz vacía
 simulacionESTR.simple <- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
@@ -211,8 +216,6 @@ for(i in 1:M){
     filter(seccion_casilla %in% muestra) %>%
     group_by(distrito_local) %>% 
     summarise(PRI = sum(total_coalicion)/sum(votacion_total_emitida),
-              #votos = sum(total_coalicion),
-              #total = sum(votacion_total_emitida),
               PAN = sum(pan) / sum(votacion_total_emitida),
               PRD = sum(prd) / sum(votacion_total_emitida))
   
@@ -220,14 +223,6 @@ for(i in 1:M){
     estPRI = df.distritos$N.dist %*% df.temporal$PRI / N,
     estPAN = df.distritos$N.dist %*% df.temporal$PAN / N,
     estPRD = df.distritos$N.dist %*% df.temporal$PRD / N)
-    
-  # Agrega información de distritos; específicamente, el número de casillas
-    #df.temporal <- df.distritos %>%
-    #left_join(df.temporal) %>%
-    #summarise(estPRI = N.dist %*% PRI / N,
-    #          estPAN = N.dist %*% PAN / N,
-    #          estPRD = N.dist %*% PRD / N) %>%
-    #as.numeric() -> simulacionESTR.simple[i, ]
 }
 proc.time()-t  # calcula tiempo: final 
 
@@ -256,7 +251,7 @@ for(i in 1:M){
     gobernador2015 %>%
     filter(distrito_local == distritos[j]) %>%
     select(seccion_casilla) -> df.muestra
-    muestra <- c(muestra, sample(df.muestra$seccion_casilla, df.distritos$n.dist))
+    muestra <- c(muestra, sample(df.muestra$seccion_casilla, df.distritos$n.dist[j]))
   } 
   
   # Crea un data frame temporal con estimadores para cada estrato
@@ -264,8 +259,6 @@ for(i in 1:M){
     filter(seccion_casilla %in% muestra) %>%
     group_by(distrito_local) %>% 
     summarise(PRI = sum(total_coalicion)/sum(votacion_total_emitida),
-              #votos = sum(total_coalicion),
-              #total = sum(votacion_total_emitida),
               PAN = sum(pan) / sum(votacion_total_emitida),
               PRD = sum(prd) / sum(votacion_total_emitida)) 
 
@@ -287,70 +280,71 @@ simulacionESTR.prop <- data.frame(simulacionESTR.prop * 100) %>%
            dif.PAN = PAN - resultadoGlobal$PAN,
            dif.PRD = PRD - resultadoGlobal$PRD)
 ```
+
 ### Tabla por distrito y casilla
 
 ```{r, message = FALSE}
-df.distritos.tipo <- gobernador2015 %>%
+rm(df.distritos)
+df.distritos<- gobernador2015 %>%
   group_by(distrito_tipo) %>%
   summarise(LN = sum(lista_nominal),
-            N.dist = n(),                                   # Casillas por distrito
+            N.dist = n(),     # Casillas por distrito
             p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
   mutate(n.dist = round(num.casillas = n * p)) %>%
   arrange(distrito_tipo)
 ```
 
 ```{r}
-df.distritos.tipo
+df.distritos
 ```
 
 ### Por distrito y tipo de casilla
 
 ```{r, message = FALSE}
-gobernador2015
+distritos <- df.distritos$distrito_tipo
+L <- length(distritos)
 # Crea una matriz vacía
-simulacionESTRATO2 <- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
-colnames(simulacionESTRATO2) <- c("PRI", "PAN", "PRD") 
+simulacionESTR02 <- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
+colnames(simulacionESTR02) <- c("PRI", "PAN", "PRD") 
 
 t <- proc.time() # calcula tiempo: inicio 
 for(i in 1:M){
-  
   # selección de una muestra
   muestra <- c() 
   for(j in 1: L){
     gobernador2015 %>%
-    filter(distrito_local == distritos[j]) %>%
+    filter(distrito_tipo == distritos[j]) %>%
     select(seccion_casilla) -> df.muestra
-    muestra <- c(muestra, sample(df.muestra$seccion_casilla, df.distritos$n.dist))
+    muestra <- c(muestra, sample(df.muestra$seccion_casilla, df.distritos$n.dist[j]))
   } 
   
   # Crea un data frame temporal con estimadores para cada estrato
   df.temporal <- gobernador2015 %>%
     filter(seccion_casilla %in% muestra) %>%
-    group_by(distrito_local) %>% 
+    group_by(distrito_tipo) %>% 
     summarise(PRI = sum(total_coalicion)/sum(votacion_total_emitida),
-              #votos = sum(total_coalicion),
-              #total = sum(votacion_total_emitida),
               PAN = sum(pan) / sum(votacion_total_emitida),
               PRD = sum(prd) / sum(votacion_total_emitida)) 
 
-  # Agrega información de distritos; específicamente, el número de casillas
+  # Agrega número de casillas
   df.temporal <- df.distritos %>%
     left_join(df.temporal) %>%
     summarise(estPRI = N.dist %*% PRI / N,
               estPAN = N.dist %*% PAN / N,
               estPRD = N.dist %*% PRD / N) %>%
-    as.numeric() -> simulacionESTR.prop[i, ]
+    as.numeric() -> simulacionESTR02[i, ]
 }
 proc.time()-t  # calcula tiempo: final 
 
 rm(muestra, df.temporal, df.muestra)
 
 # Se convierte a data frame, se multiplica por 100 y se calcula error
-simulacionESTR.prop <- data.frame(simulacionESTR.prop * 100) %>%
+simulacionESTR02 <- data.frame(simulacionESTR02 * 100) %>%
     mutate(dif.PRI = PRI - resultadoGlobal$PRI,
            dif.PAN = PAN - resultadoGlobal$PAN,
            dif.PRD = PRD - resultadoGlobal$PRD)
 ```
+
 
 
 ## Cálculo de error cuadrático medio
@@ -362,77 +356,57 @@ resumen <- resumen %>%
   rbind(calculaECM(simulacionMAS)) %>%
   rbind(calculaECM(simulacionSIST)) %>%
   rbind(calculaECM(simulacionESTR.simple)) %>%
-  rbind(calculaECM(simulacionESTR.prop))
+  rbind(calculaECM(simulacionESTR.prop)) %>%
+  rbind(calculaECM(simulacionESTR02))
 
-row.names(resumen) = c("MAS", "Sistemático", "Estr simple", "Estr prop")
+row.names(resumen) = c("MAS", "Sistemático", "Estr simple", "Estr prop", "Estr distrito y casilla")
 resumen
 ```
 
 ## Resumen de error de estimación
 
-```{r}
+```{r, eval=FALSE}
 summary(simulacionMAS[4:6])
-```
-
-```{r}
 summary(simulacionSIST[4:6])
+summary(simulacionESTR.simple[4:6])
+summary(simulacionESTR.prop[4:6])
+summary(simulacionESTR02[4:6])
 ```
 
-```{r}
-summary(simulacionESTR.simple[4:6])
-```
-```{r}
-summary(simulacionESTR.prop[4:6])
-```
 ### Gráficas
+
+```{r, echo=FALSE}
+source("funciones/graficaHistograma.R")
+  Tema <- theme(plot.title = (element_text(size = 20, color = "black")),
+                plot.subtitle = (element_text(size = 10, color = "black")),
+                legend.position = "top",  plot.margin = margin(0.5, 1, 0.5, 1, "cm"),
+                legend.key.height = unit (0.2, "cm"), legend.key.width = unit (0.2, "cm"),
+                axis.text = element_text(size = 10, color = "black"),
+                legend.text = element_text(size = 8, color = "black"),
+                legend.title = element_text(size = 10, color = "black"),
+                plot.caption = element_text(size = 10, color = "black", face="italic"),
+                axis.title = element_text(size = 12, color = "black"))
+```
 
 Muestreo aleatorio simple.
 ```{r}
-Tema <- theme(plot.title = (element_text(size = 20, color = "black")),
-              plot.subtitle = (element_text(size = 10, color = "black")),
-              legend.position = "top",  plot.margin = margin(0.5, 1, 0.5, 1, "cm"),
-              legend.key.height = unit (0.2, "cm"), legend.key.width = unit (0.2, "cm"),
-              axis.text = element_text(size = 10, color = "black"),
-              legend.text = element_text(size = 8, color = "black"),
-              legend.title = element_text(size = 10, color = "black"),
-              plot.caption = element_text(size = 10, color = "black", face="italic"),
-              axis.title = element_text(size = 12, color = "black"))
-
-mascomp <- ggplot(data=simulacionMAS) +
-  geom_density(aes(x=PRI, fill="PRI"),color="red",  alpha=0.5)+
-  geom_density(aes(x=PAN, fill="PAN"), color="blue",  alpha=0.5)+
-    scale_fill_manual(breaks = c("PRI", "PAN"),
-                       values=c("red", "blue")) +
-  theme_bw() + Tema +
-  labs(fill = "Partido", color= NULL, y = "Densidad", x = "% votación", title = "Simulación: Muestreo aleatorio simple",
-       caption = NULL, subtitle = "Resultados de mil simulaciones")
-
-show(mascomp)
+titulo <- "Simulación: Muestreo aleatorio simple"
+graficaHistograma(simulacionMAS, titulo)
 ```
+
 Estratificado.
+
 ```{r}
-estcomp <- ggplot(data=simulacionESTR.simple) +
-  geom_density(aes(x=PRI, fill="PRI"),color="red", alpha=0.5)+
-  geom_density(aes(x=PAN, fill="PAN"), color="blue", alpha=0.5)+
-  scale_fill_manual(breaks = c("PRI", "PAN"),
-                    values=c("red", "blue")) +
-  theme_bw() + Tema +
-  labs(fill = "Partido", color= NULL, y = "Densidad", x = "% votación", title = "Simulación: Muestreo estratificado",
-       caption = NULL, subtitle = "Resultados de mil simulaciones")
-show(estcomp)
+titulo <- "Simulación: Muestreo estratificado"
+graficaHistograma(simulacionESTR.simple, titulo)
 ```
+
 Estratificado Rural/Urbano
 ```{r}
-estcomp <- ggplot(data=simulacionESTR.prop) +
-  geom_density(aes(x=PRI, fill="PRI"),color="red", alpha=0.5)+
-  geom_density(aes(x=PAN, fill="PAN"), color="blue", alpha=0.5)+
-  scale_fill_manual(breaks = c("PRI", "PAN"),
-                    values=c("red", "blue")) +
-  theme_bw() + Tema +
-  labs(fill = "Partido", color= NULL, y = "Densidad", x = "% votación", title = "Simulación: Muestreo estratificado R/U",
-       caption = NULL, subtitle = "Resultados de mil simulaciones")
-show(estcomp)
+titulo <- "Simulación: Muestreo estratificado R/U"
+graficaHistograma(simulacionESTR02, titulo)
 ```
+
 Error: Muestreo aleatorio simple
 ```{r}
 maserror <- ggplot(data=simulacionMAS, aes(x=dif.PRI^2)) +
