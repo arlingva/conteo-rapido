@@ -7,7 +7,8 @@ output:
   pdf_document: default
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, warning= FALSE, message=FALSE}
+#, echo = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(readxl)
 library(dplyr)
@@ -25,11 +26,12 @@ library(cowplot)
 library(magrittr)
 library("Cairo")
 
-rm(list = ls())
+#rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source("funciones/muestra.R")
 source("funciones/calculaECM.R")
 source("funciones/graficaHistograma.R")
+source("funciones/graficaError.R")
 ```
 
 ## Lectura de datos
@@ -78,13 +80,17 @@ resultadoGlobal <- resultadoGlobal * 100
 resultadoGlobal
 ```
 
+Tamaño de muestra y número de repeticiones
+
 ```{r}
 N <- length(gobernador2015$seccion_casilla)  # total de casillas
 n <- muestra(N)                              # Número de secciones en la muestra
-M <- 10                                    # Número de repeticiones
+M <- 1000                                    # Número de repeticiones
 ```
 
-## Simulación: Muestreo aleatorio simple
+## Simulación
+
+### Muestreo aleatorio simple
 
 ```{r}
 # Crea una matriz vacía
@@ -111,7 +117,7 @@ simulacionMAS <- data.frame(simulacionMAS * 100) %>%
            dif.PRD = PRD - resultadoGlobal$PRD)
 ```
 
-## Simulación: Muestreo sistematizado
+### Muestreo sistemático
 
 ```{r}
 # Se calcula k, la posición de la casilla inicial se elige al azar entre 1 y k
@@ -149,7 +155,7 @@ simulacionSIST <- data.frame(simulacionSIST * 100) %>%
            dif.PRD = PRD - resultadoGlobal$PRD)
 ```
 
-## Simulación: Estratificado
+### Estratificado
 
 Resumen de resultados por distrito
 
@@ -188,7 +194,7 @@ $$\hat{V} (\bar{y}_{st}) = \frac{1}{N^2} \sum_{i=1}^{L} N_{i}^{2}
 \left(1- \frac{n_i}{N_i}\right) 
 \left(\frac{s_i^2}{n_i}\right)$$
 
-### Afijación simple
+#### Afijación simple
 
 ```{r, message = FALSE}
 distritos <- df.distritos$distrito_local
@@ -235,7 +241,7 @@ simulacionESTR.simple <- data.frame(simulacionESTR.simple * 100) %>%
            dif.PRD = PRD - resultadoGlobal$PRD)
 ```
 
-### Afijación proporcional
+#### Afijación proporcional
 
 ```{r, message = FALSE}
 # Crea una matriz vacía
@@ -281,7 +287,7 @@ simulacionESTR.prop <- data.frame(simulacionESTR.prop * 100) %>%
            dif.PRD = PRD - resultadoGlobal$PRD)
 ```
 
-### Tabla por distrito y casilla
+Tabla por distrito y casilla
 
 ```{r, message = FALSE}
 rm(df.distritos)
@@ -298,9 +304,9 @@ df.distritos<- gobernador2015 %>%
 df.distritos
 ```
 
-### Por distrito y tipo de casilla
+#### Estrato: distrito y tipo de casilla
 
-```{r, message = FALSE}
+```{r, message= FALSE, error = FALSE, warning = FALSE}
 distritos <- df.distritos$distrito_tipo
 L <- length(distritos)
 # Crea una matriz vacía
@@ -345,8 +351,6 @@ simulacionESTR02 <- data.frame(simulacionESTR02 * 100) %>%
            dif.PRD = PRD - resultadoGlobal$PRD)
 ```
 
-
-
 ## Cálculo de error cuadrático medio
 
 ```{r}
@@ -354,18 +358,34 @@ options(scipen=999)
 resumen <- data.frame()
 resumen <- resumen %>%
   rbind(calculaECM(simulacionMAS)) %>%
-  rbind(calculaECM(simulacionSIST)) %>%
+  #rbind(calculaECM(simulacionSIST)) %>%
   rbind(calculaECM(simulacionESTR.simple)) %>%
   rbind(calculaECM(simulacionESTR.prop)) %>%
   rbind(calculaECM(simulacionESTR02))
-
-row.names(resumen) = c("MAS", "Sistemático", "Estr simple", "Estr prop", "Estr distrito y casilla")
+row.names(resumen) = c("MAS", "Estr simple", "Estr prop", 
+                       "Estr distrito y casilla")
 resumen
 ```
 
-## Resumen de error de estimación
+```{r}
+p.estimado <- resultadoGlobal %>%
+  rbind(simulacionMAS %>%
+          summarise(PRI=mean(PRI), PAN=mean(PAN), PRD=mean(PRD))) %>%
+  rbind(simulacionESTR.simple %>%
+          summarise(PRI=mean(PRI), PAN=mean(PAN), PRD=mean(PRD))) %>%
+  rbind(simulacionESTR.prop %>%
+          summarise(PRI=mean(PRI), PAN=mean(PAN), PRD=mean(PRD))) %>%
+  rbind(simulacionESTR02 %>%
+          summarise(PRI=mean(PRI), PAN=mean(PAN), PRD=mean(PRD)))
 
-```{r, eval=FALSE}
+row.names(p.estimado) = c("Real", "MAS", "Estr simple", "Estr prop", 
+                       "Estr distrito y casilla")
+
+p.estimado
+```
+
+```{r, eval=FALSE, echo = FALSE}
+## Resumen de error de estimación
 summary(simulacionMAS[4:6])
 summary(simulacionSIST[4:6])
 summary(simulacionESTR.simple[4:6])
@@ -376,116 +396,140 @@ summary(simulacionESTR02[4:6])
 ### Gráficas
 
 ```{r, echo=FALSE}
-source("funciones/graficaHistograma.R")
-  Tema <- theme(plot.title = (element_text(size = 20, color = "black")),
-                plot.subtitle = (element_text(size = 10, color = "black")),
-                legend.position = "top",  plot.margin = margin(0.5, 1, 0.5, 1, "cm"),
-                legend.key.height = unit (0.2, "cm"), legend.key.width = unit (0.2, "cm"),
-                axis.text = element_text(size = 10, color = "black"),
-                legend.text = element_text(size = 8, color = "black"),
-                legend.title = element_text(size = 10, color = "black"),
-                plot.caption = element_text(size = 10, color = "black", face="italic"),
-                axis.title = element_text(size = 12, color = "black"))
+Tema <- theme(plot.title = (element_text(size = 20, color = "black")),
+              plot.subtitle = (element_text(size = 10, color = "black")),
+              legend.position = "top",  plot.margin = margin(0.5, 1, 0.5, 1, "cm"),
+              legend.key.height = unit (0.2, "cm"), legend.key.width = unit (0.2, "cm"),
+              axis.text = element_text(size = 10, color = "black"),
+              legend.text = element_text(size = 8, color = "black"),
+              legend.title = element_text(size = 10, color = "black"),
+              plot.caption = element_text(size = 10, color = "black", face="italic"),
+              axis.title = element_text(size = 12, color = "black"))
 ```
 
 Muestreo aleatorio simple.
+
 ```{r}
-titulo <- "Simulación: Muestreo aleatorio simple"
-graficaHistograma(simulacionMAS, titulo)
+simulacionMAS %>%
+  graficaHistograma("Simulación: Muestreo aleatorio simple")
 ```
 
 Estratificado.
 
 ```{r}
-titulo <- "Simulación: Muestreo estratificado"
-graficaHistograma(simulacionESTR.simple, titulo)
+simulacionESTR.simple %>%
+  graficaHistograma("Simulación: Muestreo estratificado")
 ```
 
 Estratificado Rural/Urbano
+
 ```{r}
-titulo <- "Simulación: Muestreo estratificado R/U"
-graficaHistograma(simulacionESTR02, titulo)
+simulacionESTR02 %>%
+  graficaHistograma("Simulación: Muestreo estratificado R/U")
 ```
 
 Error: Muestreo aleatorio simple
+
 ```{r}
-maserror <- ggplot(data=simulacionMAS, aes(x=dif.PRI^2)) +
-  geom_histogram(bins=50, color="red", fill = "red", alpha=0.5)+
-  scale_y_continuous(labels = comma) +
-  theme_bw() + Tema +
-  labs(fill = "Partido", color= NULL, y = "Observaciones", x = "Diferencia al cuadrado", title = "Simulación: Muestreo aleatorio simple",
-       caption = NULL, subtitle = "Errores de mil simulaciones respecto al resultado observado")
-show(maserror)
+source("funciones/graficaError.R")
+titulo <- "Simulación: Muestreo aleatorio simple"
+graficaError(simulacionMAS, titulo)
 ```
+
 Error: Estratificado
+
 ```{r}
-estrerror <- ggplot(data=simulacionESTR.simple, aes(x=dif.PRI^2)) +
-  geom_histogram(bins=50, color="red", fill = "red", alpha=0.5)+
-  scale_y_continuous(labels = comma) +
-  theme_bw() + Tema +
-  labs(fill = "Partido", color= NULL, y = "Observaciones", x = "Diferencia al cuadrado", title = "Simulación: Muestreo estratificado",
-       caption = NULL, subtitle = "Errores de mil simulaciones respecto al resultado observado")
-show(estrerror)
+titulo <- "Simulación: Muestreo estratificado"
+graficaError(simulacionESTR.simple, titulo)
 ```
+
+Error: Estratificado (proporcional)
+
+```{r}
+titulo <- "Simulación: Muestreo estratificado (proporcional)"
+graficaError(simulacionESTR.prop, titulo)
+```
+
 Error: Estratificado R/U
+
 ```{r}
-estrerrorprop <- ggplot(data=simulacionESTR.prop, aes(x=dif.PRI^2)) +
-  geom_histogram(bins=50, color="red", fill = "red", alpha=0.5)+
-  scale_y_continuous(labels = comma) +
-  theme_bw() + Tema +
-  labs(fill = "Partido", color= NULL, y = "Observaciones", x = "Diferencia al cuadrado", title = "Simulación: Muestreo estratificado Rural/Urbano",
-       caption = NULL, subtitle = "Errores de mil simulaciones respecto al resultado observado")
-show(estrerror)
+titulo <- "Simulación: Muestreo estratificado Rural/Urbano"
+graficaError(simulacionESTR02, titulo)
 ```
-Cálculo intervalos
+
+Cálculo intervalos (+/- 3 sd)
+
 ```{r}
-resumen <- resumen %>% tibble::rownames_to_column()  %>% rename(muestreo=rowname)
+resumen <- resumen %>% 
+  tibble::rownames_to_column()  %>% 
+  rename(muestreo=rowname)
 resumen2 <- data.frame(t(resumen[-1]))
 colnames(resumen2) <- resumen[, 1]
 
-intervaloMAS <- simulacionMAS %>% summarise(PRI= mean(PRI), PAN=mean(PAN), PRD=mean(PRD)) %>%
-  gather("Partido", "Promedio") %>% mutate(Máximo=Promedio+(3*(sqrt(as.double(resumen2$MAS)))), Mínimo=Promedio-(3*(sqrt(as.double(resumen2$MAS))))) %>%
+intervaloMAS <- simulacionMAS %>% 
+  summarise(PRI= mean(PRI), PAN=mean(PAN), PRD=mean(PRD)) %>%
+  gather("Partido", "Promedio") %>%
+  mutate(Máximo=Promedio+(3*(sqrt(as.double(resumen2$MAS)))),
+         Mínimo=Promedio-(3*(sqrt(as.double(resumen2$MAS))))) %>%
   filter(Partido!="PRD")
-intervaloestr <- simulacionESTR.simple %>% summarise(PRI= mean(PRI), PAN=mean(PAN), PRD=mean(PRD))%>%
-  gather("Partido", "Promedio") %>%  mutate(Máximo=Promedio+(3*sqrt(as.double(resumen2$Sistemático))), Mínimo=Promedio-(3*sqrt(as.double(resumen2$Sistemático)))) %>%
+
+intervaloestr <- simulacionESTR.simple %>% 
+  summarise(PRI= mean(PRI), PAN=mean(PAN), PRD=mean(PRD))%>%
+  gather("Partido", "Promedio") %>% 
+  mutate(Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr simple`))),
+         Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr simple`)))) %>%
   filter(Partido!="PRD")
-intervaloestrprop <- simulacionESTR.prop %>% summarise(PRI= mean(PRI), PAN=mean(PAN), PRD=mean(PRD))%>%
-  gather("Partido", "Promedio") %>%  mutate(Máximo=Promedio+(3*sqrt(as.double(resumen2$Sistemático))), Mínimo=Promedio-(3*sqrt(as.double(resumen2$Sistemático)))) %>%
+
+intervaloestrprop <- simulacionESTR.prop %>% 
+  summarise(PRI= mean(PRI), PAN=mean(PAN), PRD=mean(PRD))%>%
+  gather("Partido", "Promedio") %>%
+  mutate(Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr prop`))),
+         Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr prop`)))) %>%
+  filter(Partido!="PRD")
+
+intervaloestr2 <- simulacionESTR02 %>% 
+  summarise(PRI= mean(PRI), PAN=mean(PAN), PRD=mean(PRD))%>%
+  gather("Partido", "Promedio") %>%
+  mutate(Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr distrito y casilla`))),
+         Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr distrito y casilla`)))) %>%
   filter(Partido!="PRD")
 ```
 
+```{r}
+intervaloMAS
+intervaloestr
+intervaloestrprop
+intervaloestr2 
+```
+
+
 Intervalo Muestra Aleatoria Simple
+
 ```{r}
-intervalMAS <- ggplot(data=intervaloMAS, aes(y=Partido)) +
-  geom_point(aes(x=Promedio),color="red",fill="red",  alpha=0.5)+
-  geom_point(aes(x=Mínimo),color="blue", fill="blue", alpha=0.5)+
-  geom_point(aes(x=Máximo),color="blue", fill="blue",  alpha=0.5)+
-  theme_bw() + Tema +
-  labs(fill = NULL, color= NULL, y = "% votación", x = "Partido", title = "Simulación: Muestreo aleatorio simple",
-       caption = NULL, subtitle = "Intervalo de confianza")
-show(intervalMAS)
+source("funciones/graficaIC.R")
+titulo <- "Simulación: Muestreo aleatorio simple"
+graficaIC(intervaloMAS, titulo)
 ```
+
 Intervalo Estratificado
+
 ```{r}
-intervalestr <- ggplot(data=intervaloestr, aes(y=Partido)) +
-  geom_point(aes(x=Promedio),color="red",fill="red",  alpha=0.5)+
-  geom_point(aes(x=Mínimo),color="blue", fill="blue", alpha=0.5)+
-  geom_point(aes(x=Máximo),color="blue", fill="blue",  alpha=0.5)+
-  theme_bw() + Tema +
-  labs(fill = NULL, color= NULL, y = "% votación", x = "Partido", title = "Simulación: Muestreo estratificado",
-       caption = NULL, subtitle = "Intervalo de confianza")
-show(intervalestr)
+titulo <- "Simulación: Muestreo estratificado"
+graficaIC(intervaloestr, titulo)
 ```
-Intervalo Estratificado R/U
+
+Intervalo Estratificado proporcional
+
 ```{r}
-intervalestrprop <- ggplot(data=intervaloestrprop, aes(y=Partido)) +
-  geom_point(aes(x=Promedio),color="red",fill="red",  alpha=0.5)+
-  geom_point(aes(x=Mínimo),color="blue", fill="blue", alpha=0.5)+
-  geom_point(aes(x=Máximo),color="blue", fill="blue",  alpha=0.5)+
-  theme_bw() + Tema +
-  labs(fill = NULL, color= NULL, y = "% votación", x = "Partido", title = "Simulación: Muestreo estratificado R/U",
-       caption = NULL, subtitle = "Intervalo de confianza")
-show(intervalestrprop)
+titulo <- "Simulación: Muestreo estratificado (proporcional)"
+graficaIC(intervaloestrprop, titulo)
+```
+
+Intervalo Estratificado R/U
+
+```{r}
+titulo <- "Simulación: Muestreo estratificado R/U"
+graficaIC(intervaloestr2, titulo)
 ```
 
 

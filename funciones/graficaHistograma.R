@@ -7,7 +7,8 @@ graficaHistograma <-function(df.simulacion, vtitulo){
     scale_fill_manual(breaks = c("PRI", "PAN"),
                       values=c("red", "blue")) +
     theme_bw() + Tema +
-    labs(fill = "Partido", color= NULL, y = "Densidad", x = "% votación", title = vtitulo,
+    labs(fill = "Partido", color= NULL, y = "", x = "% votación", title = vtitulo,
          caption = NULL, subtitle = paste("Resultados de",M, "simulaciones"))
   show(comp)
 }
+
