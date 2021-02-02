@@ -9,7 +9,7 @@ output:
 
 ```{r setup, include=FALSE, warning= FALSE, message=FALSE}
 #, echo = FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 library(readxl)
 library(dplyr)
 library(janitor)
@@ -26,12 +26,13 @@ library(cowplot)
 library(magrittr)
 library("Cairo")
 
-#rm(list = ls())
+rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source("funciones/muestra.R")
 source("funciones/calculaECM.R")
 source("funciones/graficaHistograma.R")
 source("funciones/graficaError.R")
+source("funciones/funcionesSimulacion.R")
 ```
 
 ## Lectura de datos
@@ -85,7 +86,7 @@ Tamaño de muestra y número de repeticiones
 ```{r}
 N <- length(gobernador2015$seccion_casilla)  # total de casillas
 n <- muestra(N)                              # Número de secciones en la muestra
-M <- 1000                                    # Número de repeticiones
+M <- 10                                    # Número de repeticiones
 ```
 
 ## Simulación
@@ -93,66 +94,20 @@ M <- 1000                                    # Número de repeticiones
 ### Muestreo aleatorio simple
 
 ```{r}
-# Crea una matriz vacía
-simulacionMAS <- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
-colnames(simulacionMAS) <- c("PRI", "PAN", "PRD") 
-
-t <- proc.time() # calcula tiempo: inicio 
-for(i in 1:M){
-  muestra <- sample(gobernador2015$seccion_casilla, n)
-  gobernador2015 %>%
-  filter(seccion_casilla %in% muestra) %>%
-  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
-            PAN = sum(pan) / sum(votacion_total_emitida),
-            PRD = sum(prd) / sum(votacion_total_emitida)) %>%
-    as.numeric() -> simulacionMAS[i, ]
-}
-proc.time()-t  # calcula tiempo: final 
-rm(muestra)
-
-# Se convierte a data frame, se multiplica por 100 y se calcula error
-simulacionMAS <- data.frame(simulacionMAS * 100) %>%
-    mutate(dif.PRI = PRI - resultadoGlobal$PRI,
-           dif.PAN = PAN - resultadoGlobal$PAN,
-           dif.PRD = PRD - resultadoGlobal$PRD)
+source("funciones/funcionesSimulacion.R")
+simulacionMAS <- funcionSimulaMas(gobernador2015, n, M) %>%
+  mutate(dif.PRI = PRI - resultadoGlobal$PRI,
+         dif.PAN = PAN - resultadoGlobal$PAN,
+         dif.PRD = PRD - resultadoGlobal$PRD)
 ```
 
 ### Muestreo sistemático
 
 ```{r}
-# Se calcula k, la posición de la casilla inicial se elige al azar entre 1 y k
-k <- round(N/n,0)  # número de estratos
-
-# Crea una matriz vacía
-simulacionSIST <- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
-colnames(simulacionSIST) <- c("PRI", "PAN", "PRD") 
-
-t <- proc.time() # calcula tiempo: inicio 
-for(i in 1:M){
-  # Selección de posición de casilla inicial
-  casilla0 <- sample(1:k, 1)
-
-  # Seleccion de posición del resto de casillas
-  posicion <- c()
-  for(j in 1: n-1) {
-    posicion <- c(posicion, casilla0 + j*k)
-  }
-  muestra <- gobernador2015$seccion_casilla[posicion]
-  gobernador2015 %>%
-  filter(seccion_casilla %in% muestra) %>%
-  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
-            PAN = sum(pan) / sum(votacion_total_emitida),
-            PRD = sum(prd) / sum(votacion_total_emitida)) %>%
-    as.numeric() -> simulacionSIST[i, ]
-}
-proc.time()-t  # calcula tiempo: final 
-rm(muestra)
-
-# Se convierte a data frame, se multiplica por 100 y se calcula error
-simulacionSIST <- data.frame(simulacionSIST * 100) %>%
-    mutate(dif.PRI = PRI - resultadoGlobal$PRI,
-           dif.PAN = PAN - resultadoGlobal$PAN,
-           dif.PRD = PRD - resultadoGlobal$PRD)
+simulacionSIST <- funcionSimulaSist(gobernador2015, n, N, M) %>%
+  mutate(dif.PRI = PRI - resultadoGlobal$PRI,
+         dif.PAN = PAN - resultadoGlobal$PAN,
+         dif.PRD = PRD - resultadoGlobal$PRD)
 ```
 
 ### Estratificado
@@ -197,95 +152,87 @@ $$\hat{V} (\bar{y}_{st}) = \frac{1}{N^2} \sum_{i=1}^{L} N_{i}^{2}
 #### Afijación simple
 
 ```{r, message = FALSE}
-distritos <- df.distritos$distrito_local
-L <- length(distritos)
-
-casillas.xDistrito <- round(n / L)
-
-# Crea una matriz vacía
-simulacionESTR.simple <- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
-colnames(simulacionESTR.simple) <- c("PRI", "PAN", "PRD") 
-
-t <- proc.time() # calcula tiempo: inicio 
-for(i in 1:M){
-  # selección de una muestra
-  muestra <- c() 
-  for(j in 1: L){
-    gobernador2015 %>%
-    filter(distrito_local == distritos[j]) %>%
-    select(seccion_casilla) -> df.muestra
-    muestra <- c(muestra, sample(df.muestra$seccion_casilla, casillas.xDistrito))
-  } 
-  
-  # Crea un data frame temporal con estimadores para cada estrato
-  df.temporal <- gobernador2015 %>%
-    filter(seccion_casilla %in% muestra) %>%
-    group_by(distrito_local) %>% 
-    summarise(PRI = sum(total_coalicion)/sum(votacion_total_emitida),
-              PAN = sum(pan) / sum(votacion_total_emitida),
-              PRD = sum(prd) / sum(votacion_total_emitida))
-  
-  simulacionESTR.simple[i, ] <- c(
-    estPRI = df.distritos$N.dist %*% df.temporal$PRI / N,
-    estPAN = df.distritos$N.dist %*% df.temporal$PAN / N,
-    estPRD = df.distritos$N.dist %*% df.temporal$PRD / N)
-}
-proc.time()-t  # calcula tiempo: final 
-
-rm(muestra, df.temporal, df.muestra)
-
-# Se convierte a data frame, se multiplica por 100 y se calcula error
-simulacionESTR.simple <- data.frame(simulacionESTR.simple * 100) %>%
+#source("funciones/funcionesSimulacion.R")
+simulacionESTR.simple <- funcionSimulaEstrSimple(gobernador2015, n, M, df.distritos) %>%
     mutate(dif.PRI = PRI - resultadoGlobal$PRI,
            dif.PAN = PAN - resultadoGlobal$PAN,
            dif.PRD = PRD - resultadoGlobal$PRD)
 ```
+
+
+```{r}
+funcionSimulaEstrSimple02 <- function(df, n, M, df.distritos){
+  distritos <- df.distritos$distrito_local
+  L <- length(distritos)
+  
+  casillas.xDistrito <- round(n / L)
+  
+  # Crea una matriz vacía
+  resultado <- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
+  colnames(resultado) <- colnames(resultadoGlobal)
+  
+  for(i in 1:M){
+    muestra <- c() 
+    for(j in 1: L){
+      df %>%
+        filter(distrito_local == distritos[j]) %>%
+        select(seccion_casilla) -> df.muestra
+      muestra <- c(muestra, sample(df.muestra$seccion_casilla, casillas.xDistrito))
+    } 
+    
+    # Crea un data frame temporal con estimadores para cada estrato
+    df.temporal <- df %>%
+      filter(seccion_casilla %in% muestra) %>%
+      group_by(distrito_local) %>% 
+      summarise(PRI = sum(total_coalicion)/sum(votacion_total_emitida),
+                PAN = sum(pan) / sum(votacion_total_emitida),
+                PRD = sum(prd) / sum(votacion_total_emitida))
+    
+    resultado[i, ] <- c(
+      estPRI = df.distritos$N.dist %*% varMAS(df.temporal$PRI) / N,
+      estPAN = df.distritos$N.dist %*% df.temporal$PAN / N,
+      estPRD = df.distritos$N.dist %*% df.temporal$PRD / N)
+  }
+  rm(df.temporal, df.muestra)
+  
+  # Se convierte a data frame, se multiplica por 100 y se calcula error
+  resultado <- data.frame(resultado * 100) 
+  return(resultado)
+}
+```
+
+
+```{r}
+# Función: estimador de varianza bajo MAS
+varEstMAS <- function(x, n, N){
+  y <- (1-n/N) * sd(x)^2/n
+  return(y)
+}
+# prueba la función
+varEstMAS(simulacionMAS$PAN, n, N)
+  
+df <-simulacionESTR.simple
+varEstESTR <- function(x, Ni){
+  ni
+}
+
+
+
+```
+
+
 
 #### Afijación proporcional
 
 ```{r, message = FALSE}
-# Crea una matriz vacía
-simulacionESTR.prop <- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
-colnames(simulacionESTR.prop) <- c("PRI", "PAN", "PRD") 
-
-t <- proc.time() # calcula tiempo: inicio 
-for(i in 1:M){
-  
-  # selección de una muestra
-  muestra <- c() 
-  for(j in 1: L){
-    gobernador2015 %>%
-    filter(distrito_local == distritos[j]) %>%
-    select(seccion_casilla) -> df.muestra
-    muestra <- c(muestra, sample(df.muestra$seccion_casilla, df.distritos$n.dist[j]))
-  } 
-  
-  # Crea un data frame temporal con estimadores para cada estrato
-  df.temporal <- gobernador2015 %>%
-    filter(seccion_casilla %in% muestra) %>%
-    group_by(distrito_local) %>% 
-    summarise(PRI = sum(total_coalicion)/sum(votacion_total_emitida),
-              PAN = sum(pan) / sum(votacion_total_emitida),
-              PRD = sum(prd) / sum(votacion_total_emitida)) 
-
-  # Agrega información de distritos; específicamente, el número de casillas
-  df.temporal <- df.distritos %>%
-    left_join(df.temporal) %>%
-    summarise(estPRI = N.dist %*% PRI / N,
-              estPAN = N.dist %*% PAN / N,
-              estPRD = N.dist %*% PRD / N) %>%
-    as.numeric() -> simulacionESTR.prop[i, ]
-}
-proc.time()-t  # calcula tiempo: final 
-
-rm(muestra, df.temporal, df.muestra)
-
-# Se convierte a data frame, se multiplica por 100 y se calcula error
-simulacionESTR.prop <- data.frame(simulacionESTR.prop * 100) %>%
+simulacionESTR.prop <- funcionSimulaEstrProp(gobernador2015, n, M, df.distritos) %>%
     mutate(dif.PRI = PRI - resultadoGlobal$PRI,
            dif.PAN = PAN - resultadoGlobal$PAN,
            dif.PRD = PRD - resultadoGlobal$PRD)
 ```
+
+
+
 
 Tabla por distrito y casilla
 
@@ -366,6 +313,8 @@ row.names(resumen) = c("MAS", "Estr simple", "Estr prop",
                        "Estr distrito y casilla")
 resumen
 ```
+
+
 
 ```{r}
 p.estimado <- resultadoGlobal %>%
