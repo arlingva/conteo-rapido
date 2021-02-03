@@ -73,12 +73,11 @@ rm(casillas_sonora)
 ```{r}
 gobernador2015 %>%
   summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
-            PAN = sum(pan) / sum(votacion_total_emitida),
-            PRD = sum(prd) / sum(votacion_total_emitida)) -> resultadoGlobal
+            PAN = sum(pan) / sum(votacion_total_emitida)) -> resultadoReal
 
 # Resultado global
-resultadoGlobal <- resultadoGlobal * 100
-resultadoGlobal
+resultadoReal <- resultadoReal * 100
+resultadoReal
 ```
 
 Tamaño de muestra y número de repeticiones
@@ -86,7 +85,7 @@ Tamaño de muestra y número de repeticiones
 ```{r}
 N <- length(gobernador2015$seccion_casilla)  # total de casillas
 n <- muestra(N)                              # Número de secciones en la muestra
-M <- 10                                    # Número de repeticiones
+M <- 3                                    # Número de repeticiones
 ```
 
 ## Simulación
@@ -94,30 +93,12 @@ M <- 10                                    # Número de repeticiones
 ### Muestreo aleatorio simple
 
 ```{r}
-source("funciones/funcionesSimulacion.R")
-simulacionMAS <- funcionSimulaMas(gobernador2015, n, M) %>%
-  mutate(dif.PRI = PRI - resultadoGlobal$PRI,
-         dif.PAN = PAN - resultadoGlobal$PAN,
-         dif.PRD = PRD - resultadoGlobal$PRD)
-```
-
-```{r}
-# Función: estimador de varianza bajo MAS
-varEstMAS <- function(x, n, N){
-  y <- (1-n/N) * sd(x)^2/n
-  return(y)
-}
-# prueba la función
-varEstMAS(simulacionMAS$PAN, n, N)
+simulacionMAS <- funcionSimulaMas(gobernador2015, n, M)
 ```
 
 ### Muestreo sistemático
-
 ```{r}
-simulacionSIST <- funcionSimulaSist(gobernador2015, n, N, M) %>%
-  mutate(dif.PRI = PRI - resultadoGlobal$PRI,
-         dif.PAN = PAN - resultadoGlobal$PAN,
-         dif.PRD = PRD - resultadoGlobal$PRD)
+simulacionSIST <- funcionSimulaSist(gobernador2015, n, N, M)
 ```
 
 ### Estratificado
@@ -141,25 +122,19 @@ df.distritos
 #### Afijación simple
 
 ```{r, message = FALSE}
-simulacionESTR.simple <- funcionSimulaEstrSimple(gobernador2015, n, M, df.distritos) %>%
-    mutate(dif.PRI = PRI - resultadoGlobal$PRI,
-           dif.PAN = PAN - resultadoGlobal$PAN,
-           dif.PRD = PRD - resultadoGlobal$PRD)
+simulacionESTR.simple <- funcionSimulaEstrSimple(gobernador2015, n, M, df.distritos)
 ```
 
 #### Afijación proporcional
 
 ```{r, message = FALSE}
-simulacionESTR.prop <- funcionSimulaEstrProp(gobernador2015, n, M, df.distritos) %>%
-    mutate(dif.PRI = PRI - resultadoGlobal$PRI,
-           dif.PAN = PAN - resultadoGlobal$PAN,
-           dif.PRD = PRD - resultadoGlobal$PRD)
+simulacionESTR.prop <- funcionSimulaEstrProp(gobernador2015, n, M, df.distritos)
 ```
 
 Tabla por distrito y casilla
 
 ```{r, message = FALSE}
-df.distritos<- gobernador2015 %>%
+df.distritos02<- gobernador2015 %>%
   group_by(distrito_tipo) %>%
   summarise(LN = sum(lista_nominal),
             N.dist = n(),     # Casillas por distrito
@@ -169,16 +144,13 @@ df.distritos<- gobernador2015 %>%
 ```
 
 ```{r}
-df.distritos
+df.distritos02
 ```
 
 #### Estrato: distrito y tipo de casilla
 
 ```{r, message= FALSE, error = FALSE, warning = FALSE}
-simulacionESTR02 <- funcionSimulaEstr02(gobernador2015, n, M, df.distritos) %>%
-    mutate(dif.PRI = PRI - resultadoGlobal$PRI,
-           dif.PAN = PAN - resultadoGlobal$PAN,
-           dif.PRD = PRD - resultadoGlobal$PRD)
+simulacionESTR02 <- funcionSimulaEstr02(gobernador2015, n, M, df.distritos02) 
 ```
 
 ## Cálculo de error cuadrático medio
@@ -198,15 +170,15 @@ resumen
 ```
 
 ```{r}
-p.estimado <- resultadoGlobal %>%
+p.estimado <- resultadoReal %>%
   rbind(simulacionMAS %>%
-          summarise(PRI=mean(PRI), PAN=mean(PAN), PRD=mean(PRD))) %>%
+          summarise(PRI=mean(PRI), PAN=mean(PAN))) %>%
   rbind(simulacionESTR.simple %>%
-          summarise(PRI=mean(PRI), PAN=mean(PAN), PRD=mean(PRD))) %>%
+          summarise(PRI=mean(PRI), PAN=mean(PAN))) %>%
   rbind(simulacionESTR.prop %>%
-          summarise(PRI=mean(PRI), PAN=mean(PAN), PRD=mean(PRD))) %>%
+          summarise(PRI=mean(PRI), PAN=mean(PAN))) %>%
   rbind(simulacionESTR02 %>%
-          summarise(PRI=mean(PRI), PAN=mean(PAN), PRD=mean(PRD)))
+          summarise(PRI=mean(PRI), PAN=mean(PAN)))
 
 row.names(p.estimado) = c("Real", "MAS", "Estr simple", "Estr prop", 
                        "Estr distrito y casilla")
@@ -214,14 +186,6 @@ row.names(p.estimado) = c("Real", "MAS", "Estr simple", "Estr prop",
 p.estimado
 ```
 
-```{r, eval=FALSE, echo = FALSE}
-## Resumen de error de estimación
-summary(simulacionMAS[4:6])
-summary(simulacionSIST[4:6])
-summary(simulacionESTR.simple[4:6])
-summary(simulacionESTR.prop[4:6])
-summary(simulacionESTR02[4:6])
-```
 
 ### Gráficas
 
@@ -261,7 +225,6 @@ simulacionESTR02 %>%
 Error: Muestreo aleatorio simple
 
 ```{r}
-source("funciones/graficaError.R")
 titulo <- "Simulación: Muestreo aleatorio simple"
 graficaError(simulacionMAS, titulo)
 ```
@@ -297,31 +260,31 @@ resumen2 <- data.frame(t(resumen[-1]))
 colnames(resumen2) <- resumen[, 1]
 
 intervaloMAS <- simulacionMAS %>% 
-  summarise(PRI= mean(PRI), PAN=mean(PAN), PRD=mean(PRD)) %>%
+  summarise(PRI= mean(PRI), PAN=mean(PAN)) %>%
   gather("Partido", "Promedio") %>%
-  mutate(Máximo=Promedio+(3*(sqrt(as.double(resumen2$MAS)))),
-         Mínimo=Promedio-(3*(sqrt(as.double(resumen2$MAS))))) %>%
+  mutate(Mínimo=Promedio-(3*(sqrt(as.double(resumen2$MAS)))),
+         Máximo=Promedio+(3*(sqrt(as.double(resumen2$MAS))))) %>%
   filter(Partido!="PRD")
 
 intervaloestr <- simulacionESTR.simple %>% 
-  summarise(PRI= mean(PRI), PAN=mean(PAN), PRD=mean(PRD))%>%
+  summarise(PRI= mean(PRI), PAN=mean(PAN))%>%
   gather("Partido", "Promedio") %>% 
-  mutate(Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr simple`))),
-         Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr simple`)))) %>%
+  mutate(Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr simple`))),
+         Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr simple`)))) %>%
   filter(Partido!="PRD")
 
 intervaloestrprop <- simulacionESTR.prop %>% 
-  summarise(PRI= mean(PRI), PAN=mean(PAN), PRD=mean(PRD))%>%
+  summarise(PRI= mean(PRI), PAN=mean(PAN))%>%
   gather("Partido", "Promedio") %>%
-  mutate(Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr prop`))),
-         Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr prop`)))) %>%
+  mutate(Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr prop`))),
+         Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr prop`)))) %>%
   filter(Partido!="PRD")
 
 intervaloestr2 <- simulacionESTR02 %>% 
-  summarise(PRI= mean(PRI), PAN=mean(PAN), PRD=mean(PRD))%>%
+  summarise(PRI= mean(PRI), PAN=mean(PAN))%>%
   gather("Partido", "Promedio") %>%
-  mutate(Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr distrito y casilla`))),
-         Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr distrito y casilla`)))) %>%
+  mutate(Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr distrito y casilla`))),
+         Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr distrito y casilla`)))) %>%
   filter(Partido!="PRD")
 ```
 
@@ -332,6 +295,37 @@ intervaloestrprop
 intervaloestr2 
 ```
 
+```{r}
+intervaloMAS <- simulacionMAS %>% 
+  summarise(PRI= mean(PRI), PAN=mean(PAN)) %>%
+  gather("Partido", "Promedio") %>%
+  mutate(Mínimo=Promedio-(3*(sqrt(as.double(resumen2$MAS)))),
+         Máximo=Promedio+(3*(sqrt(as.double(resumen2$MAS))))) %>%
+  filter(Partido!="PRD")
+
+simulacionMAS <- simulacionMAS %>%
+  mutate(capturaPRI = resultadoReal$PRI > intervaloMAS$Mínimo[1] 
+                        && resultadoReal$PRI < intervaloMAS$Máximo[1],
+         capturaPAN = resultadoReal$PAN > intervaloMAS$Mínimo[2] 
+                        && resultadoReal$PAN < intervaloMAS$Máximo[2],
+         no.Traslape = intervaloMAS$Máximo[2] < intervaloMAS$Mínimo[1])
+
+simulacionMAS
+```
+
+Porcentaje de estimación correcta
+
+```{r}
+captura_verdad<- data.frame()
+captura_verdad <- captura_verdad %>%
+  rbind(simulacionMAS %>%
+          select(capturaPRI, capturaPAN, no.Traslape) %>%
+          summarise(PRI.capturado = 100*length(capturaPRI[capturaPRI==TRUE]) / M,
+                    PAN.capturado = 100*length(capturaPAN[capturaPAN==TRUE]) / M,
+                    no.Traslapado= 100*length(no.Traslape[no.Traslape==TRUE]) / M))
+captura_verdad
+# +  long
+```
 
 Intervalo Muestra Aleatoria Simple
 
@@ -362,5 +356,15 @@ titulo <- "Simulación: Muestreo estratificado R/U"
 graficaIC(intervaloestr2, titulo)
 ```
 
+
+```{r}
+# Función: estimador de varianza bajo MAS
+varEstMAS <- function(x, n, N){
+  y <- (1-n/N) * sd(x)^2/n
+  return(y)
+}
+# prueba la función
+varEstMAS(simulacionMAS$PAN, n, N)
+```
 
 

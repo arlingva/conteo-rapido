@@ -1,12 +1,13 @@
+
 varEstMAS <- function(x, n, N){
   y <- (1-n/N) * sd(x)^2/n
   return(y)
 }
 
 funcionSimulaMas <- function(df, n, M){
-  resultado <- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
-  colnames(resultado) <- colnames(resultadoGlobal)
-  #colnames(resultado) <- c(colnames(resultadoGlobal), paste("var", colnames(resultadoGlobal), sep = ""))
+  resultado <- matrix(rep(0, length(resultadoReal)*M), nrow = M)
+  colnames(resultado) <- colnames(resultadoReal)
+  #colnames(resultado) <- c(colnames(resultadoReal), paste("var", colnames(resultadoReal), sep = ""))
   N<-length(df$seccion_casilla)
   
   for(i in 1:M){
@@ -14,20 +15,14 @@ funcionSimulaMas <- function(df, n, M){
     df %>%
       filter(seccion_casilla %in% muestra) %>%
       summarise(PRI = 100*sum(total_coalicion) / sum(votacion_total_emitida),
-                PAN = 100*sum(pan) / sum(votacion_total_emitida),
-                PRD = 100*sum(prd) / sum(votacion_total_emitida)) %>% #,
-#                sdPRI = varEstMAS(100*total_coalicion/votacion_total_emitida, n, N),
-#                sdPAN = varEstMAS(100*pan/votacion_total_emitida, n, N),
-#                sdPRD = varEstMAS(100*prd/votacion_total_emitida, n, N)) %>%
+                PAN = 100*sum(pan) / sum(votacion_total_emitida)) %>%
       as.numeric() -> resultado[i, ]
     resultado
   }
   
-  # Se convierte a data frame, se multiplica por 100 y se calcula error
-  resultado <- data.frame(resultado) #%>%
-  #mutate(dif.PRI = PRI - resultadoGlobal$PRI,
-  #         dif.PAN = PAN - resultadoGlobal$PAN,
-  #         dif.PRD = PRD - resultadoGlobal$PRD)
+  resultado <- data.frame(resultado) %>%
+    mutate(dif.PRI = PRI - resultadoReal$PRI,
+           dif.PAN = PAN - resultadoReal$PAN)
   return(resultado)
 }
 
@@ -36,8 +31,8 @@ funcionSimulaSist <- function(df, n, N, M){
   k <- round(N/n,0)  # número de estratos
   
   # Crea una matriz vacía
-  resultado <- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
-  colnames(resultado) <- colnames(resultadoGlobal)
+  resultado <- matrix(rep(0, length(resultadoReal)*M), nrow = M)
+  colnames(resultado) <- colnames(resultadoReal)
   
   for(i in 1:M){
     # Selección de posición de casilla inicial
@@ -51,14 +46,15 @@ funcionSimulaSist <- function(df, n, N, M){
     muestra <- df$seccion_casilla[posicion]
     df %>%
       filter(seccion_casilla %in% muestra) %>%
-      summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
-                PAN = sum(pan) / sum(votacion_total_emitida),
-                PRD = sum(prd) / sum(votacion_total_emitida)) %>%
+      summarise(PRI = 100*sum(total_coalicion) / sum(votacion_total_emitida),
+                PAN = 100*sum(pan) / sum(votacion_total_emitida)) %>%
       as.numeric() -> resultado[i, ]
   }
 
   # Se convierte a data frame, se multiplica por 100 y se calcula error
-  resultado <- data.frame(resultado * 100)
+  resultado <- data.frame(resultado) %>%
+    mutate(dif.PRI = PRI - resultadoReal$PRI,
+           dif.PAN = PAN - resultadoReal$PAN)
 }
 
 funcionSimulaEstrSimple <- function(df, n, M, df.distritos){
@@ -68,8 +64,8 @@ funcionSimulaEstrSimple <- function(df, n, M, df.distritos){
   casillas.xDistrito <- round(n / L)
   
   # Crea una matriz vacía
-  resultado <- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
-  colnames(resultado) <- colnames(resultadoGlobal)
+  resultado <- matrix(rep(0, length(resultadoReal)*M), nrow = M)
+  colnames(resultado) <- colnames(resultadoReal)
   
   for(i in 1:M){
     muestra <- c() 
@@ -84,19 +80,18 @@ funcionSimulaEstrSimple <- function(df, n, M, df.distritos){
     df.temporal <- df %>%
       filter(seccion_casilla %in% muestra) %>%
       group_by(distrito_local) %>% 
-      summarise(PRI = sum(total_coalicion)/sum(votacion_total_emitida),
-                PAN = sum(pan) / sum(votacion_total_emitida),
-                PRD = sum(prd) / sum(votacion_total_emitida))
+      summarise(PRI = 100*sum(total_coalicion)/sum(votacion_total_emitida),
+                PAN = 100*sum(pan) / sum(votacion_total_emitida))
     
     resultado[i, ] <- c(
       estPRI = df.distritos$N.dist %*% df.temporal$PRI / N,
-      estPAN = df.distritos$N.dist %*% df.temporal$PAN / N,
-      estPRD = df.distritos$N.dist %*% df.temporal$PRD / N)
+      estPAN = df.distritos$N.dist %*% df.temporal$PAN / N)
   }
-  rm(df.temporal, df.muestra)
-  
+
   # Se convierte a data frame, se multiplica por 100 y se calcula error
-  resultado <- data.frame(resultado * 100) 
+  resultado <- data.frame(resultado)  %>%
+    mutate(dif.PRI = PRI - resultadoReal$PRI,
+           dif.PAN = PAN - resultadoReal$PAN)
   return(resultado)
 }
 
@@ -105,8 +100,8 @@ funcionSimulaEstrProp <- function(df, n, M, df.distritos){
   L <- length(distritos)
   
   # Crea una matriz vacía
-  resultado <- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
-  colnames(resultado) <- colnames(resultadoGlobal)
+  resultado <- matrix(rep(0, length(resultadoReal)*M), nrow = M)
+  colnames(resultado) <- colnames(resultadoReal)
 
   for(i in 1:M){
     muestra <- c() 
@@ -120,19 +115,20 @@ funcionSimulaEstrProp <- function(df, n, M, df.distritos){
     df.temporal <- df %>%
       filter(seccion_casilla %in% muestra) %>%
       group_by(distrito_local) %>% 
-      summarise(PRI = sum(total_coalicion)/sum(votacion_total_emitida),
-                PAN = sum(pan) / sum(votacion_total_emitida),
-                PRD = sum(prd) / sum(votacion_total_emitida)) 
+      summarise(PRI = 100*sum(total_coalicion)/sum(votacion_total_emitida),
+                PAN = 100*sum(pan) / sum(votacion_total_emitida)) 
     
     df.temporal <- df.distritos %>%
       left_join(df.temporal) %>%
-      summarise(estPRI = N.dist %*% PRI / N,
-                estPAN = N.dist %*% PAN / N,
-                estPRD = N.dist %*% PRD / N) %>%
+      summarise(estPRI = N.dist %*% PRI / N, #PRI es el vector p^
+                estPAN = N.dist %*% PAN / N) %>% #,
+                #varPRI = (1-n.dist/N.dist)) %>%
       as.numeric() -> resultado[i, ]
   }
 
-  resultado <- data.frame(resultado * 100)
+  resultado <- data.frame(resultado)  %>%
+    mutate(dif.PRI = PRI - resultadoReal$PRI,
+           dif.PAN = PAN - resultadoReal$PAN)
   return(resultado)  
 }
 
@@ -140,8 +136,8 @@ funcionSimulaEstr02 <- function(df, n, M, df.distritos){
   distritos <- df.distritos$distrito_tipo
   L <- length(distritos)
   # Crea una matriz vacía
-  df <- matrix(rep(0, length(resultadoGlobal)*M), nrow = M)
-  colnames(df) <- c("PRI", "PAN", "PRD") 
+  resultado <- matrix(rep(0, length(resultadoReal)*M), nrow = M)
+  colnames(resultado) <- colnames(resultadoReal)
   
   for(i in 1:M){
     # selección de una muestra
@@ -157,20 +153,18 @@ funcionSimulaEstr02 <- function(df, n, M, df.distritos){
     df.temporal <- gobernador2015 %>%
       filter(seccion_casilla %in% muestra) %>%
       group_by(distrito_tipo) %>% 
-      summarise(PRI = sum(total_coalicion)/sum(votacion_total_emitida),
-                PAN = sum(pan) / sum(votacion_total_emitida),
-                PRD = sum(prd) / sum(votacion_total_emitida)) 
+      summarise(PRI = 100*sum(total_coalicion)/sum(votacion_total_emitida),
+                PAN = 100*sum(pan) / sum(votacion_total_emitida)) 
     
     # Agrega número de casillas
     df.temporal <- df.distritos %>%
       left_join(df.temporal) %>%
       summarise(estPRI = N.dist %*% PRI / N,
-                estPAN = N.dist %*% PAN / N,
-                estPRD = N.dist %*% PRD / N) %>%
-      as.numeric() -> df[i, ]
+                estPAN = N.dist %*% PAN / N) %>%
+      as.numeric() -> resultado[i, ]
   }
-  rm(muestra, df.temporal, df.muestra)
-  
   # Se convierte a data frame, se multiplica por 100 y se calcula error
-  df <- data.frame(df * 100) 
+  resultado <- data.frame(resultado) %>%
+    mutate(dif.PRI = PRI - resultadoReal$PRI,
+           dif.PAN = PAN - resultadoReal$PAN)
 }
