@@ -80,7 +80,7 @@ Tamaño de muestra y número de repeticiones
 ```{r}
 N <- length(gobernador2015$seccion_casilla)  # total de casillas
 n <- muestra(N)                              # Número de secciones en la muestra
-M <- 10                                    # Número de repeticiones
+M <- 1000                                    # Número de repeticiones
 ```
 
 ## Simulación
@@ -95,6 +95,7 @@ df.distritos <- gobernador2015 %>%
   arrange(distrito_local)
 df.distritos
 ```
+
 #### Afijación proporcional
 
 ```{r, message = FALSE, warning=FALSE}
@@ -105,14 +106,14 @@ simulacionESTR.prop <- funcionSimulaEstrVar(gobernador2015, n, M, df.distritos)
 
 ```{r}
 simulacionESTR.prop <- simulacionESTR.prop %>%
-  mutate(MinPRI = estPRI - (2.57 * varPRI),
-         MaxPRI = estPRI + (2.57 * varPRI),
-         MinPAN = estPAN - (2.57 * varPAN),
-         MaxPAN = estPAN + (2.57 * varPAN),
-         capturaPRI = estPRI > MinPRI
-                        && estPRI < MaxPRI,
-         capturaPAN = estPAN > MinPAN
-                        && estPAN < MaxPAN,
+  mutate(MinPRI = estPRI - (1.96 * sqrt(varPRI)),
+         MaxPRI = estPRI + (1.96 * sqrt(varPRI)),
+         MinPAN = estPAN - (1.96 * sqrt(varPAN)),
+         MaxPAN = estPAN + (1.96 * sqrt(varPAN)),
+         capturaPRI = resultadoReal$PRI > MinPRI
+                        && resultadoReal$PRI < MaxPRI,
+         capturaPAN = resultadoReal$PAN > MinPAN
+                        && resultadoReal$PAN < MaxPAN,
          no.Traslape = MaxPAN < MinPRI,
          longIntPRI = MaxPRI-MinPRI,
          longIntPAN = MaxPAN-MinPAN)
