@@ -84,7 +84,7 @@ Tamaño de muestra y número de repeticiones
 ```{r}
 N <- length(gobernador2015$seccion_casilla)  # total de casillas
 n <- muestra(N)                              # Número de secciones en la muestra
-M <- 100                                    # Número de repeticiones
+M <- 10                                    # Número de repeticiones
 ```
 
 ## Simulación
@@ -107,6 +107,7 @@ df.distritos
 simulacionESTR.prop <- funcionSimulaEstrVar(gobernador2015, n, M, df.distritos)
 ```
 
+
 # CALCULO DE INTERVALO DE MUESTREO ESTRATIFICADO PROPORCIONAL E INDICADORES
 
 ```{r}
@@ -121,7 +122,8 @@ simulacionESTR.prop <- simulacionESTR.prop %>%
                         && estPAN < MaxPAN,
          no.Traslape = MaxPAN < MinPRI,
          longIntPRI = MaxPRI-MinPRI,
-         longIntPAN = MaxPAN-MinPAN)
+         longIntPAN = MaxPAN-MinPAN) %>% select(c(MinPRI, estPRI, MaxPRI))
+  
 
 captura_verdad <- data.frame()
 captura_verdad <- captura_verdad %>%
@@ -133,6 +135,9 @@ captura_verdad <- captura_verdad %>%
 captura_verdad
 
 ```
+
+
+
 ```{r, echo=FALSE}
 Tema <- theme(plot.title = (element_text(size = 20, color = "black")),
               plot.subtitle = (element_text(size = 10, color = "black")),
