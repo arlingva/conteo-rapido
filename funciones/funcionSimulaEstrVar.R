@@ -41,7 +41,6 @@ funcionSimulaEstrVar <- function(df, n, M, df.distritos){
     varPAN[i] = sum((1-n.dist/N.dist) * 
                       (N.dist/sum(N.dist))^2 *
                       (estPAN[i]*(1-estPAN[i])) / (n.dist-1))
-    
   }
   
   resultado <- cbind(estPRI, estPAN, varPRI, varPAN)
