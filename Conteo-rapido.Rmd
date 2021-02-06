@@ -119,11 +119,6 @@ df.distritos <- gobernador2015 %>%
 df.distritos
 ```
 
-```{r}
-funcionSimulaEstrVar(gobernador2015, n, M, df.distritos)
-```
-
-
 #### Afijación simple
 
 ```{r, message = FALSE}
@@ -133,7 +128,9 @@ simulacionESTR.simple <- funcionSimulaEstrSimple(gobernador2015, n, M, df.distri
 #### Afijación proporcional
 
 ```{r, message = FALSE}
-simulacionESTR.prop <- funcionSimulaEstrProp(gobernador2015, n, M, df.distritos)
+source("funciones/funcionesSimulacion.R")
+#simulacionESTR.prop <- funcionSimulaEstrProp(gobernador2015, n, M, df.distritos)
+simulacionESTR.prop <- funcionSimulaEstrVar(gobernador2015, n, M, df.distritos)
 ```
 
 Tabla por distrito y casilla

@@ -161,6 +161,8 @@ funcionSimulaEstrVar <- function(df, n, M, df.distritos){
     df.temporal <- df %>%
       filter(seccion_casilla %in% muestra) %>%
       group_by(distrito_local) %>% 
+      #summarise(PRI = sum(total_coalicion)/sum(votacion_total_emitida),
+      #          PAN = sum(pan) / sum(votacion_total_emitida)) 
       summarise(PRI = 100 * sum(total_coalicion)/sum(votacion_total_emitida),
                 PAN = 100 * sum(pan) / sum(votacion_total_emitida)) 
     
@@ -184,7 +186,6 @@ funcionSimulaEstrVar <- function(df, n, M, df.distritos){
            dif.PAN = estPAN - resultadoReal$PAN)
   return(resultado)  
 }
-
 
 funcionSimulaEstr02 <- function(df, n, M, df.distritos){
   distritos <- df.distritos$distrito_tipo
