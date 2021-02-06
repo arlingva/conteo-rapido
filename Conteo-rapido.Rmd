@@ -118,7 +118,10 @@ df.distritos <- gobernador2015 %>%
 ```{r}
 df.distritos
 ```
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0707ff4ca268cf0e2ed346d9bbe9798a726bf70a
 #### Afijación simple
 
 ```{r, message = FALSE}
@@ -127,9 +130,13 @@ simulacionESTR.simple <- funcionSimulaEstrSimple(gobernador2015, n, M, df.distri
 
 #### Afijación proporcional
 
+<<<<<<< HEAD
 ```{r, message = FALSE}
 source("funciones/funcionesSimulacion.R")
 #simulacionESTR.prop <- funcionSimulaEstrProp(gobernador2015, n, M, df.distritos)
+=======
+```{r, message = FALSE, warning=FALSE}
+>>>>>>> 0707ff4ca268cf0e2ed346d9bbe9798a726bf70a
 simulacionESTR.prop <- funcionSimulaEstrVar(gobernador2015, n, M, df.distritos)
 ```
 
@@ -178,7 +185,7 @@ p.estimado <- resultadoReal %>%
   rbind(simulacionESTR.simple %>%
           summarise(PRI=mean(PRI), PAN=mean(PAN))) %>%
   rbind(simulacionESTR.prop %>%
-          summarise(PRI=mean(PRI), PAN=mean(PAN))) %>%
+          summarise(PRI=mean(estPRI), PAN=mean(estPAN))) %>%
   rbind(simulacionESTR02 %>%
           summarise(PRI=mean(PRI), PAN=mean(PAN)))
 
@@ -188,6 +195,104 @@ row.names(p.estimado) = c("Real", "MAS", "Estr simple", "Estr prop",
 p.estimado
 ```
 
+Cálculo intervalos (+/- 3 sd)
+
+```{r}
+resumen <- resumen %>% 
+ tibble::rownames_to_column()  %>% 
+  rename(muestreo=rowname)
+resumen2 <- data.frame(t(resumen[-1]))
+colnames(resumen2) <- resumen[, 1]
+
+intervaloMAS <- simulacionMAS %>% 
+  summarise(PRI= mean(PRI), PAN=mean(PAN)) %>%
+  gather("Partido", "Promedio") %>%
+  mutate(Mínimo=Promedio-(3*(sqrt(as.double(resumen2$MAS)))),
+         Máximo=Promedio+(3*(sqrt(as.double(resumen2$MAS))))) %>%
+  filter(Partido!="PRD")
+
+intervaloestr <- simulacionESTR.simple %>% 
+  summarise(PRI= mean(PRI), PAN=mean(PAN))%>%
+  gather("Partido", "Promedio") %>% 
+  mutate(Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr simple`))),
+         Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr simple`)))) %>%
+  filter(Partido!="PRD")
+
+intervaloestr2 <- simulacionESTR02 %>% 
+  summarise(PRI= mean(PRI), PAN=mean(PAN))%>%
+  gather("Partido", "Promedio") %>%
+  mutate(Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr distrito y casilla`))),
+         Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr distrito y casilla`)))) %>%
+  filter(Partido!="PRD")
+```
+
+# CALCULO DE INTERVALO DE MUESTREO ESTRATIFICADO PROPORCIONAL E INDICADORES
+
+```{r}
+
+simulacionESTR.prop <- simulacionESTR.prop %>%
+  mutate(MinPRI = estPRI - (2.57 * varPRI),
+         MaxPRI = estPRI + (2.57 * varPRI),
+         MinPAN = estPAN - (2.57 * varPAN),
+         MaxPAN = estPAN + (2.57 * varPAN),
+         capturaPRI = estPRI > MinPRI
+                        && estPRI < MaxPRI,
+         capturaPAN = estPAN > MinPAN
+                        && estPAN < MaxPAN,
+         no.Traslape = MaxPAN < MinPRI,
+         longIntPRI = MaxPRI-MinPRI,
+         longIntPAN = MaxPAN-MinPAN)
+
+captura_verdad <- data.frame()
+captura_verdad <- captura_verdad %>%
+  rbind(simulacionESTR.prop %>%
+          select(capturaPRI, capturaPAN, no.Traslape) %>%
+          summarise(PRI.capturado = 100*length(capturaPRI[capturaPRI==TRUE]) / M,
+                    PAN.capturado = 100*length(capturaPAN[capturaPAN==TRUE]) / M,
+                    no.Traslapado = 100*length(no.Traslape[no.Traslape==TRUE])/M))
+captura_verdad
+
+```
+
+
+```{r}
+intervaloMAS
+intervaloestr
+#intervaloestrprop
+intervaloestr2 
+```
+
+```{r}
+intervaloMAS <- simulacionMAS %>% 
+  summarise(PRI= mean(PRI), PAN=mean(PAN)) %>%
+  gather("Partido", "Promedio") %>%
+  mutate(Mínimo=Promedio-(3*(sqrt(as.double(resumen2$MAS)))),
+         Máximo=Promedio+(3*(sqrt(as.double(resumen2$MAS))))) %>%
+  filter(Partido!="PRD")
+
+simulacionMAS <- simulacionMAS %>%
+  mutate(capturaPRI = resultadoReal$PRI > intervaloMAS$Mínimo[1] 
+                        && resultadoReal$PRI < intervaloMAS$Máximo[1],
+         capturaPAN = resultadoReal$PAN > intervaloMAS$Mínimo[2] 
+                        && resultadoReal$PAN < intervaloMAS$Máximo[2],
+         no.Traslape = intervaloMAS$Máximo[2] < intervaloMAS$Mínimo[1])
+
+simulacionMAS
+```
+
+Porcentaje de estimación correcta
+
+```{r}
+captura_verdad<- data.frame()
+captura_verdad <- captura_verdad %>%
+  rbind(simulacionMAS %>%
+          select(capturaPRI, capturaPAN, no.Traslape) %>%
+          summarise(PRI.capturado = 100*length(capturaPRI[capturaPRI==TRUE]) / M,
+                    PAN.capturado = 100*length(capturaPAN[capturaPAN==TRUE]) / M,
+                    no.Traslapado= 100*length(no.Traslape[no.Traslape==TRUE]) / M))
+captura_verdad
+# +  long
+```
 
 ### Gráficas
 
@@ -250,83 +355,6 @@ Error: Estratificado R/U
 ```{r}
 titulo <- "Simulación: Muestreo estratificado Rural/Urbano"
 graficaError(simulacionESTR02, titulo)
-```
-
-Cálculo intervalos (+/- 3 sd)
-
-```{r}
-resumen <- resumen %>% 
-  tibble::rownames_to_column()  %>% 
-  rename(muestreo=rowname)
-resumen2 <- data.frame(t(resumen[-1]))
-colnames(resumen2) <- resumen[, 1]
-
-intervaloMAS <- simulacionMAS %>% 
-  summarise(PRI= mean(PRI), PAN=mean(PAN)) %>%
-  gather("Partido", "Promedio") %>%
-  mutate(Mínimo=Promedio-(3*(sqrt(as.double(resumen2$MAS)))),
-         Máximo=Promedio+(3*(sqrt(as.double(resumen2$MAS))))) %>%
-  filter(Partido!="PRD")
-
-intervaloestr <- simulacionESTR.simple %>% 
-  summarise(PRI= mean(PRI), PAN=mean(PAN))%>%
-  gather("Partido", "Promedio") %>% 
-  mutate(Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr simple`))),
-         Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr simple`)))) %>%
-  filter(Partido!="PRD")
-
-intervaloestrprop <- simulacionESTR.prop %>% 
-  summarise(PRI= mean(PRI), PAN=mean(PAN))%>%
-  gather("Partido", "Promedio") %>%
-  mutate(Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr prop`))),
-         Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr prop`)))) %>%
-  filter(Partido!="PRD")
-
-intervaloestr2 <- simulacionESTR02 %>% 
-  summarise(PRI= mean(PRI), PAN=mean(PAN))%>%
-  gather("Partido", "Promedio") %>%
-  mutate(Mínimo=Promedio-(3*sqrt(as.double(resumen2$`Estr distrito y casilla`))),
-         Máximo=Promedio+(3*sqrt(as.double(resumen2$`Estr distrito y casilla`)))) %>%
-  filter(Partido!="PRD")
-```
-
-```{r}
-intervaloMAS
-intervaloestr
-intervaloestrprop
-intervaloestr2 
-```
-
-```{r}
-intervaloMAS <- simulacionMAS %>% 
-  summarise(PRI= mean(PRI), PAN=mean(PAN)) %>%
-  gather("Partido", "Promedio") %>%
-  mutate(Mínimo=Promedio-(3*(sqrt(as.double(resumen2$MAS)))),
-         Máximo=Promedio+(3*(sqrt(as.double(resumen2$MAS))))) %>%
-  filter(Partido!="PRD")
-
-simulacionMAS <- simulacionMAS %>%
-  mutate(capturaPRI = resultadoReal$PRI > intervaloMAS$Mínimo[1] 
-                        && resultadoReal$PRI < intervaloMAS$Máximo[1],
-         capturaPAN = resultadoReal$PAN > intervaloMAS$Mínimo[2] 
-                        && resultadoReal$PAN < intervaloMAS$Máximo[2],
-         no.Traslape = intervaloMAS$Máximo[2] < intervaloMAS$Mínimo[1])
-
-simulacionMAS
-```
-
-Porcentaje de estimación correcta
-
-```{r}
-captura_verdad<- data.frame()
-captura_verdad <- captura_verdad %>%
-  rbind(simulacionMAS %>%
-          select(capturaPRI, capturaPAN, no.Traslape) %>%
-          summarise(PRI.capturado = 100*length(capturaPRI[capturaPRI==TRUE]) / M,
-                    PAN.capturado = 100*length(capturaPAN[capturaPAN==TRUE]) / M,
-                    no.Traslapado= 100*length(no.Traslape[no.Traslape==TRUE]) / M))
-captura_verdad
-# +  long
 ```
 
 Intervalo Muestra Aleatoria Simple

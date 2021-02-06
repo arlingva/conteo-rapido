@@ -132,6 +132,7 @@ funcionSimulaEstrProp <- function(df, n, M, df.distritos){
   return(resultado)  
 }
 
+<<<<<<< HEAD
 funcionSimulaEstrVar <- function(df, n, M, df.distritos){
   distritos <- df.distritos$distrito_local
   N.dist <- df.distritos$N.dist
@@ -186,6 +187,8 @@ funcionSimulaEstrVar <- function(df, n, M, df.distritos){
            dif.PAN = estPAN - resultadoReal$PAN)
   return(resultado)  
 }
+=======
+>>>>>>> 0707ff4ca268cf0e2ed346d9bbe9798a726bf70a
 
 funcionSimulaEstr02 <- function(df, n, M, df.distritos){
   distritos <- df.distritos$distrito_tipo
