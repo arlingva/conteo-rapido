@@ -68,7 +68,7 @@ gobernador2015 <- casillas_sonora %>%
 rm(casillas_sonora)
 ```
 
-## Resultados globales
+## Resultado real
 
 ```{r}
 gobernador2015 %>%
@@ -85,7 +85,7 @@ Tamaño de muestra y número de repeticiones
 ```{r}
 N <- length(gobernador2015$seccion_casilla)  # total de casillas
 n <- muestra(N)                              # Número de secciones en la muestra
-M <- 3                                    # Número de repeticiones
+M <- 10                                    # Número de repeticiones
 ```
 
 ## Simulación
@@ -118,6 +118,11 @@ df.distritos <- gobernador2015 %>%
 ```{r}
 df.distritos
 ```
+
+```{r}
+funcionSimulaEstrVar(gobernador2015, n, M, df.distritos)
+```
+
 
 #### Afijación simple
 
