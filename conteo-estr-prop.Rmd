@@ -25,7 +25,6 @@ library(ggfortify)
 library(cowplot)
 library(magrittr)
 library("Cairo")
-
 rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source("funciones/muestra.R")
@@ -42,10 +41,8 @@ source("funciones/funcionSimulaEstrVar.R")
 gobernador2015<- read_excel("data/ComputoGobernador2015_Casilla.xlsx", 
                             sheet = "POR CASILLA", skip = 1) %>%
   clean_names()
-
 UbicacionCasillas2015 <- read_excel("data/UbicacionCasillas2015.xlsx", skip = 4) %>%
   clean_names()
-
 casillas_sonora <- read.csv("data/casillas_sonora.csv")  %>%
   select(seccion, casilla_tipo) %>%
   distinct(seccion, casilla_tipo) %>%
@@ -75,7 +72,6 @@ rm(casillas_sonora)
 gobernador2015 %>%
   summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
             PAN = sum(pan) / sum(votacion_total_emitida)) -> resultadoReal
-
 resultadoReal
 ```
 
@@ -97,34 +93,29 @@ df.distritos <- gobernador2015 %>%
             p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
   mutate(n.dist = round(num.casillas = n * p)) %>%
   arrange(distrito_local)
-
 df.distritos
 ```
-
 #### Afijación proporcional
 
 ```{r, message = FALSE, warning=FALSE}
 simulacionESTR.prop <- funcionSimulaEstrVar(gobernador2015, n, M, df.distritos)
 ```
 
-
 # CALCULO DE INTERVALO DE MUESTREO ESTRATIFICADO PROPORCIONAL E INDICADORES
 
 ```{r}
 simulacionESTR.prop <- simulacionESTR.prop %>%
-  mutate(MinPRI = estPRI - (1.96 * sqrt(varPRI)),
-         MaxPRI = estPRI + (1.96 * sqrt(varPRI)),
-         MinPAN = estPAN - (1.96 * sqrt(varPAN)),
-         MaxPAN = estPAN + (1.96 * sqrt(varPAN)),
+  mutate(MinPRI = estPRI - (2.57 * varPRI),
+         MaxPRI = estPRI + (2.57 * varPRI),
+         MinPAN = estPAN - (2.57 * varPAN),
+         MaxPAN = estPAN + (2.57 * varPAN),
          capturaPRI = estPRI > MinPRI
                         && estPRI < MaxPRI,
          capturaPAN = estPAN > MinPAN
                         && estPAN < MaxPAN,
          no.Traslape = MaxPAN < MinPRI,
          longIntPRI = MaxPRI-MinPRI,
-         longIntPAN = MaxPAN-MinPAN) %>% select(c(MinPRI, estPRI, MaxPRI))
-  
-
+         longIntPAN = MaxPAN-MinPAN)
 captura_verdad <- data.frame()
 captura_verdad <- captura_verdad %>%
   rbind(simulacionESTR.prop %>%
@@ -133,11 +124,7 @@ captura_verdad <- captura_verdad %>%
                     PAN.capturado = 100*length(capturaPAN[capturaPAN==TRUE]) / M,
                     no.Traslapado = 100*length(no.Traslape[no.Traslape==TRUE])/M))
 captura_verdad
-
 ```
-
-
-
 ```{r, echo=FALSE}
 Tema <- theme(plot.title = (element_text(size = 20, color = "black")),
               plot.subtitle = (element_text(size = 10, color = "black")),
@@ -154,7 +141,6 @@ Error: Estratificado (proporcional)
 
 
 ```{r}
-
 graficaError <-function(df.simulacion, vtitulo){
   M <- length(df.simulacion[,1])
   error <- ggplot(data=df.simulacion, aes(x=dif.PRI^2)) +
@@ -170,7 +156,6 @@ graficaError <-function(df.simulacion, vtitulo){
   show(error)
 }
 ```
-
 
 ```{r}
 titulo <- "Simulación: Muestreo estratificado (proporcional)"
@@ -197,7 +182,3 @@ graficaHistograma <-function(df.simulacion, vtitulo){
 simulacionESTR.prop %>%
   graficaHistograma("Simulación: Muestreo estratificado proporcional")
 ```
-
-
-
-
