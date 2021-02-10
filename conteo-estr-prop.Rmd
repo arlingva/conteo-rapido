@@ -1,0 +1,185 @@
+---
+title: "Conteo rapido muestra estratificada proporcional"
+author: "Equipo 1"
+date: "2/5/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+#, echo = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+library(readxl)
+library(dplyr)
+library(janitor)
+library(kableExtra)
+library(tidyverse)
+library(extrafont)
+library(scales)
+library(showtext)
+library(tint)
+library(miniUI)
+library(units)
+library(ggfortify)
+library(cowplot)
+library(magrittr)
+library("Cairo")
+rm(list = ls())
+`%notin%` = function(x,y) !(x %in% y)
+source("funciones/muestra.R")
+source("funciones/calculaECM.R")
+#source("funciones/graficaHistograma.R")
+#source("funciones/graficaError.R")
+source("funciones/funcionesSimulacion.R")
+source("funciones/funcionSimulaEstrVar.R")
+```
+
+## Lectura de datos
+
+```{r}
+gobernador2015<- read_excel("data/ComputoGobernador2015_Casilla.xlsx", 
+                            sheet = "POR CASILLA", skip = 1) %>%
+  clean_names()
+UbicacionCasillas2015 <- read_excel("data/UbicacionCasillas2015.xlsx", skip = 4) %>%
+  clean_names()
+casillas_sonora <- read.csv("data/casillas_sonora.csv")  %>%
+  select(seccion, casilla_tipo) %>%
+  distinct(seccion, casilla_tipo) %>%
+  rbind(c(608, "RURAL"))
+casillas_sonora$seccion %<>% as.numeric()
+```
+
+Se agrega lista nominal a la tabla de resultados por casilla
+
+```{r}
+gobernador2015 <- UbicacionCasillas2015 %>%
+  left_join(gobernador2015, ., by = c("seccion", "casilla")) %>%
+  select(-c(distrito_local.y, municipio.y, domicilio)) %>%
+  mutate(seccion_casilla = paste(seccion, casilla)) %>%
+  rename(municipio = municipio.x,
+         distrito_local = distrito_local.x)
+  
+gobernador2015 <- casillas_sonora %>%
+  left_join(gobernador2015, ., by = "seccion") %>%
+  mutate(distrito_tipo = paste(distrito_local,casilla_tipo))
+rm(casillas_sonora)
+```
+
+## Resultado real
+
+```{r}
+gobernador2015 %>%
+  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
+            PAN = sum(pan) / sum(votacion_total_emitida)) -> resultadoReal
+resultadoReal
+```
+
+Tamaño de muestra y número de repeticiones
+
+```{r}
+N <- length(gobernador2015$seccion_casilla)  # total de casillas
+n <- muestra(N)                              # Número de secciones en la muestra
+M <- 10                                    # Número de repeticiones
+```
+
+## Simulación
+
+```{r, message = FALSE}
+df.distritos <- gobernador2015 %>%
+  group_by(distrito_local) %>%
+  summarise(LN = sum(lista_nominal),
+            N.dist = n(),           # Casillas por distrito
+            p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
+  mutate(n.dist = round(num.casillas = n * p)) %>%
+  arrange(distrito_local)
+df.distritos
+```
+#### Afijación proporcional
+
+```{r, message = FALSE, warning=FALSE}
+source("funciones/funcionSimulaEstrVar.R")
+simulacionESTR.prop <- funcionSimulaEstrVar(gobernador2015, n, M, df.distritos)
+```
+
+# CALCULO DE INTERVALO DE MUESTREO ESTRATIFICADO PROPORCIONAL E INDICADORES
+
+```{r}
+simulacionESTR.prop <- simulacionESTR.prop %>%
+  mutate(MinPRI = estPRI - (1.96 * sqrt(varPRI)),
+         MaxPRI = estPRI + (1.96 * sqrt(varPRI)),
+         MinPAN = estPAN - (1.96 * sqrt(varPAN)),
+         MaxPAN = estPAN + (1.96 * sqrt(varPAN)),
+         capturaPRI = resultadoReal$PRI > MinPRI
+                        && resultadoReal$PRI < MaxPRI,
+         capturaPAN = resultadoReal$PAN > MinPAN
+                        && resultadoReal$PAN < MaxPAN,
+         no.Traslape = MaxPAN < MinPRI,
+         longIntPRI = MaxPRI-MinPRI,
+         longIntPAN = MaxPAN-MinPAN)
+captura_verdad <- data.frame()
+captura_verdad <- captura_verdad %>%
+  rbind(simulacionESTR.prop %>%
+          select(capturaPRI, capturaPAN, no.Traslape) %>%
+          summarise(PRI.capturado = 100*length(capturaPRI[capturaPRI==TRUE]) / M,
+                    PAN.capturado = 100*length(capturaPAN[capturaPAN==TRUE]) / M,
+                    no.Traslapado = 100*length(no.Traslape[no.Traslape==TRUE])/M))
+captura_verdad
+```
+```{r, echo=FALSE}
+Tema <- theme(plot.title = (element_text(size = 20, color = "black")),
+              plot.subtitle = (element_text(size = 10, color = "black")),
+              legend.position = "top",  plot.margin = margin(0.5, 1, 0.5, 1, "cm"),
+              legend.key.height = unit (0.2, "cm"), legend.key.width = unit (0.2, "cm"),
+              axis.text = element_text(size = 10, color = "black"),
+              legend.text = element_text(size = 8, color = "black"),
+              legend.title = element_text(size = 10, color = "black"),
+              plot.caption = element_text(size = 10, color = "black", face="italic"),
+              axis.title = element_text(size = 12, color = "black"))
+```
+
+Error: Estratificado (proporcional)
+
+
+```{r}
+graficaError <-function(df.simulacion, vtitulo){
+  M <- length(df.simulacion[,1])
+  error <- ggplot(data=df.simulacion, aes(x=dif.PRI^2)) +
+    geom_histogram(bins=50, color="red", fill = "red", alpha=0.5)+
+    scale_y_continuous(labels = comma) +
+    theme_bw() + Tema +
+    labs(fill = "Partido", color= NULL, 
+         x = "Diferencia al cuadrado", 
+         y = "Observaciones", 
+         title = vtitulo,
+         caption = NULL, 
+         subtitle = paste("Errores de", M, "simulaciones respecto al resultado observado"))
+  show(error)
+}
+```
+
+```{r}
+titulo <- "Simulación: Muestreo estratificado (proporcional)"
+graficaError(simulacionESTR.prop, titulo)
+```
+
+```{r}
+graficaHistograma <-function(df.simulacion, vtitulo){
+  M <- length(df.simulacion[,1])
+  
+  comp <- ggplot(data=df.simulacion) +
+    geom_histogram(aes(x=estPRI, fill="PRI"),color="red",  alpha=0.5)+
+    geom_histogram(aes(x=estPAN, fill="PAN"), color="blue",  alpha=0.5)+
+    scale_fill_manual(breaks = c("PRI", "PAN"),
+                      values=c("red", "blue")) +
+    theme_bw() + Tema +
+    labs(fill = "Partido", color= NULL, y = "", x = "% votación", title = vtitulo,
+         caption = NULL, subtitle = paste("Resultados de",M, "simulaciones"))
+  show(comp)
+}
+```
+
+```{r}
+simulacionESTR.prop %>%
+  graficaHistograma("Simulación: Muestreo estratificado proporcional")
+```
