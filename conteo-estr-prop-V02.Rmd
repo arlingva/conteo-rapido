@@ -28,11 +28,9 @@ library("Cairo")
 rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source("funciones/muestra.R")
-source("funciones/calculaECM.R")
-#source("funciones/graficaHistograma.R")
-#source("funciones/graficaError.R")
-source("funciones/funcionesSimulacion.R")
-source("funciones/funcionSimulaEstrVar.R")
+#source("funciones/calculaECM.R")
+#source("funciones/funcionesSimulacion.R")
+source("funciones/funcionSimulaEstrVar-02.R")
 ```
 
 ## Lectura de datos
@@ -90,31 +88,31 @@ M <- 10                                    # Número de repeticiones
 df.distritos <- gobernador2015 %>%
   group_by(distrito_local) %>%
   summarise(LN = sum(lista_nominal),
-            N.dist = n(),           # Casillas por distrito
+            Nh = n(),           # Casillas por distrito
             p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
-  mutate(n.dist = round(num.casillas = n * p)) %>%
+  mutate(nh = round(num.casillas = n * p)) %>%
   arrange(distrito_local)
 df.distritos
 ```
 
 ```{r}
-distritos <- df.distritos$distrito_local
-  N.dist <- df.distritos$N.dist
-  n.dist <- df.distritos$n.dist
+  distritos <- df.distritos$distrito_local
+  nh <- df.distritos$nh
+  Nh <- df.distritos$Nh
   L <- length(distritos)
-  N <-sum(N.dist)
-  
+  #N <-sum(nh)
+
   # Crea una matriz vacía para el resultado
   resultado <- data.frame()
   df<-gobernador2015
   # aquí se guardarán el estimador y varianza de cada partido, de cada muestra
   estPRI <-rep(0, M)
   estPAN <-rep(0, M)
-  Gh <-rep(0, M)
+  #Gh <-rep(0, M)
   varPRI <-rep(0, M)
   varPAN <-rep(0, M)
   estTotal <-rep(0, M)
-  i<-1
+  
   for(i in 1:M){
     muestra <- c() 
     # en este ciclo se selecciona la muestra dentro de cada estrato
@@ -122,50 +120,52 @@ distritos <- df.distritos$distrito_local
       df %>%
         filter(distrito_local == distritos[j]) %>%
         select(seccion_casilla) -> df.muestra
-      muestra <- c(muestra, sample(df.muestra$seccion_casilla, df.distritos$n.dist[j]))
-    } 
-    
+      muestra <- c(muestra, sample(df.muestra$seccion_casilla, df.distritos$nh[j]))
+    }
+
     # Se calcula el porcentaje de votos de cada estrato para cada muestra
     
     df.temporal <- df %>%
       filter(seccion_casilla %in% muestra) %>%
       group_by(distrito_local) %>% 
       summarise(PRI = sum(total_coalicion), #suma sobre las casillas: 1 hasta nh
-                PAN = sum(pan),
-                Total = sum(total_votos_validos),
-                Wh = N.dist / n.dist)
-
-    estTotal[i] = df.temporal$Wh %*% df.temporal$Total
-    estPRI[i] = df.temporal$Wh %*% df.temporal$PRI / estTotal[i]
+                PAN = sum(pan),   # sum (Yhi)
+                Total = sum(total_votos_validos))
+                #Wh = Nh / nh)
+    df.temporal <- cbind(df.temporal, Wh = Nh / nh)
+  
+    #Y gorro = estTotal = df.temporal$Wh %*% df.temporal$PAN
+    #X gorro = df.temporal$Wh %*% df.temporal$Total
+  
+    estTotal[i] = df.temporal$Wh %*% df.temporal$Total #X gorro
     estPAN[i] = df.temporal$Wh %*% df.temporal$PAN / estTotal[i]
+    estPRI[i] = df.temporal$Wh %*% df.temporal$PRI / estTotal[i]
     
     df2 <- df %>%
       filter(seccion_casilla %in% muestra) %>%
       select(distrito_local, seccion_casilla, total_coalicion, pan, total_votos_validos) %>%
-      mutate(Ghi = (pan - estPAN[i]*total_votos_validos)/estTotal[i])
-    
+      mutate(GhiPAN = (pan - estPAN[i]*total_votos_validos) / estTotal[i])
+  
     df2 %>%
       group_by(distrito_local) %>%
-      summarise(Gh.barra = mean(Ghi)) -> Gh.barra
+      summarise(Gh.barraPAN = mean(GhiPAN)) -> Gh.barraPAN
     
     df2 <- df2 %>%
-      left_join(Gh.barra) %>%
-      mutate(Ghi_Gh = (Ghi - Gh.barra)^2)
-    
+      left_join(Gh.barraPAN) %>%
+      mutate(Ghi_GhPAN = (GhiPAN - Gh.barraPAN)^2)
+  
     df2 %>%
       group_by(distrito_local) %>%
-      summarise(numerador = sum(Ghi_Gh)) %>%
-      mutate(denominador = n.dist - 1,
-             VarGhi = numerador / denominador) %>%
-      select(VarGhi) -> VarGhi
-      
-    varPAN <- sum(N.dist^2 * (1/n.dist - 1/N.dist) * VarGhi)
-    
-    delta <- sqrt(varPAN) * 2.575
-    }
+      summarise(numeradorPAN = sum(Ghi_GhPAN)) %>%
+      mutate(denominadorPAN = nh - 1,
+             VarGhiPAN = numeradorPAN / denominadorPAN) %>%
+      select(VarGhiPAN) -> VarGhiPAN
   
-  resultado <- cbind(estPRI, estPAN, varPRI, varPAN)
-  colnames(resultado) <- c("estPRI", "estPAN", "varPRI", "varPAN")
+    varPAN[i] <- sum(Nh^2 * (1/nh - 1/Nh) * VarGhiPAN)
+  }    
+  deltaPAN <- sqrt(varPAN) * 2.575
+  resultado <- cbind(estPRI, estPAN, varPRI, varPAN, deltaPAN)
+  colnames(resultado) <- c("estPRI", "estPAN", "varPRI", "varPAN", "deltaPAN")
   resultado <- resultado %>%
     as.data.frame() %>%
     mutate(dif.PRI = estPRI - resultadoReal$PRI,
@@ -176,22 +176,23 @@ distritos <- df.distritos$distrito_local
 #### Afijación proporcional
 
 ```{r, message = FALSE, warning=FALSE}
-source("funciones/funcionSimulaEstrVar.R")
-simulacionESTR.prop <- funcionSimulaEstrVar(gobernador2015, n, M, df.distritos)
+#source("funciones/funcionSimulaEstrVar.R")
+#simulacionESTR.prop <- funcionSimulaEstrVar(gobernador2015, n, M, df.distritos)
 ```
 
 # CALCULO DE INTERVALO DE MUESTREO ESTRATIFICADO PROPORCIONAL E INDICADORES
 
 ```{r}
+MinPAN <- simulacionESTR.prop$MinPAN
+MaxPAN <- simulacionESTR.prop$MaxPAN
+simulacionESTR.prop <- resultado
 simulacionESTR.prop <- simulacionESTR.prop %>%
-  mutate(MinPRI = estPRI - (1.96 * sqrt(varPRI)),
-         MaxPRI = estPRI + (1.96 * sqrt(varPRI)),
-         MinPAN = estPAN - (1.96 * sqrt(varPAN)),
-         MaxPAN = estPAN + (1.96 * sqrt(varPAN)),
-         capturaPRI = resultadoReal$PRI > MinPRI
-                        && resultadoReal$PRI < MaxPRI,
-         capturaPAN = resultadoReal$PAN > MinPAN
-                        && resultadoReal$PAN < MaxPAN,
+  mutate(MinPRI = estPRI - (2.575 * sqrt(varPRI)),
+         MaxPRI = estPRI + (2.575 * sqrt(varPRI)),
+         MinPAN = estPAN - (2.575 * sqrt(varPAN)),
+         MaxPAN = estPAN + (2.575 * sqrt(varPAN)),
+         capturaPRI = resultadoReal$PRI > MinPRI & resultadoReal$PRI < MaxPRI,
+         capturaPAN = resultadoReal$PAN > MinPAN & resultadoReal$PAN < MaxPAN,
          no.Traslape = MaxPAN < MinPRI,
          longIntPRI = MaxPRI-MinPRI,
          longIntPAN = MaxPAN-MinPAN)
@@ -204,6 +205,7 @@ captura_verdad <- captura_verdad %>%
                     no.Traslapado = 100*length(no.Traslape[no.Traslape==TRUE])/M))
 captura_verdad
 ```
+
 ```{r, echo=FALSE}
 Tema <- theme(plot.title = (element_text(size = 20, color = "black")),
               plot.subtitle = (element_text(size = 10, color = "black")),

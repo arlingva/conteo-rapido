@@ -1,9 +1,9 @@
 funcionSimulaEstrVar <- function(df, n, M, df.distritos){
   distritos <- df.distritos$distrito_local
-  N.dist <- df.distritos$N.dist
-  n.dist <- df.distritos$n.dist
+  Nh <- df.distritos$Nh
+  Nh <- df.distritos$Nh
   L <- length(distritos)
-  N <-sum(N.dist)
+  N <-sum(Nh)
   
   # Crea una matriz vacía para el resultado
   resultado <- data.frame()
@@ -21,7 +21,7 @@ funcionSimulaEstrVar <- function(df, n, M, df.distritos){
       df %>%
         filter(distrito_local == distritos[j]) %>%
         select(seccion_casilla) -> df.muestra
-      muestra <- c(muestra, sample(df.muestra$seccion_casilla, df.distritos$n.dist[j]))
+      muestra <- c(muestra, sample(df.muestra$seccion_casilla, df.distritos$Nh[j]))
     } 
     
     # Se calcula el porcentaje de votos de cada estrato para cada muestra
@@ -32,14 +32,14 @@ funcionSimulaEstrVar <- function(df, n, M, df.distritos){
       summarise(PRI = sum(total_coalicion)/sum(votacion_total_emitida),
                 PAN = sum(pan) / sum(votacion_total_emitida)) 
 
-    estPRI[i] = N.dist %*% df.temporal$PRI / N
-    estPAN[i] = N.dist %*% df.temporal$PAN / N
-    varPRI[i] = sum((1-n.dist/N.dist) * 
-                      (N.dist/N)^2 *
-                      (df.temporal$PRI*(1-df.temporal$PRI)) / (n.dist-1))
-    varPAN[i] = sum((1-n.dist/N.dist) * 
-                      (N.dist/sum(N.dist))^2 *
-                      (df.temporal$PAN*(1-df.temporal$PAN)) / (n.dist-1))
+    estPRI[i] = Nh %*% df.temporal$PRI / N
+    estPAN[i] = Nh %*% df.temporal$PAN / N
+    varPRI[i] = sum((1-Nh/Nh) * 
+                      (Nh/N)^2 *
+                      (df.temporal$PRI*(1-df.temporal$PRI)) / (Nh-1))
+    varPAN[i] = sum((1-Nh/Nh) * 
+                      (Nh/sum(Nh))^2 *
+                      (df.temporal$PAN*(1-df.temporal$PAN)) / (Nh-1))
   }
   
   resultado <- cbind(estPRI, estPAN, varPRI, varPAN)
