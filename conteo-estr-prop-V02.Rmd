@@ -78,7 +78,7 @@ Tamaño de muestra y número de repeticiones
 ```{r}
 N <- length(gobernador2015$seccion_casilla)  # total de casillas
 n <- muestra(N)                              # Número de secciones en la muestra
-M <- 10                                    # Número de repeticiones
+M <- 100                                    # Número de repeticiones
 ```
 
 
@@ -133,17 +133,15 @@ df.distritos
                 Total = sum(total_votos_validos))
                 #Wh = Nh / nh)
     df.temporal <- cbind(df.temporal, Wh = Nh / nh)
-  
-    #Y gorro = estTotal = df.temporal$Wh %*% df.temporal$PAN
-    #X gorro = df.temporal$Wh %*% df.temporal$Total
-  
+
     estTotal[i] = df.temporal$Wh %*% df.temporal$Total #X gorro
     estPAN[i] = df.temporal$Wh %*% df.temporal$PAN / estTotal[i]
     estPRI[i] = df.temporal$Wh %*% df.temporal$PRI / estTotal[i]
     
     df2 <- df %>%
       filter(seccion_casilla %in% muestra) %>%
-      select(distrito_local, seccion_casilla, total_coalicion, pan, total_votos_validos) %>%
+      select(distrito_local, seccion_casilla, 
+             total_coalicion, pan, total_votos_validos) %>%
       mutate(GhiPAN = (pan - estPAN[i]*total_votos_validos) / estTotal[i])
   
     df2 %>%
@@ -162,6 +160,8 @@ df.distritos
       select(VarGhiPAN) -> VarGhiPAN
   
     varPAN[i] <- sum(Nh^2 * (1/nh - 1/Nh) * VarGhiPAN)
+    
+    rm(df.temporal)
   }    
   deltaPAN <- sqrt(varPAN) * 2.575
   resultado <- cbind(estPRI, estPAN, varPRI, varPAN, deltaPAN)
@@ -183,9 +183,9 @@ df.distritos
 # CALCULO DE INTERVALO DE MUESTREO ESTRATIFICADO PROPORCIONAL E INDICADORES
 
 ```{r}
-MinPAN <- simulacionESTR.prop$MinPAN
-MaxPAN <- simulacionESTR.prop$MaxPAN
 simulacionESTR.prop <- resultado
+
+
 simulacionESTR.prop <- simulacionESTR.prop %>%
   mutate(MinPRI = estPRI - (2.575 * sqrt(varPRI)),
          MaxPRI = estPRI + (2.575 * sqrt(varPRI)),
