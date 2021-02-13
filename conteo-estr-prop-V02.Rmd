@@ -8,7 +8,6 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-#, echo = FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 library(readxl)
 library(dplyr)
@@ -24,7 +23,10 @@ library(units)
 library(ggfortify)
 library(cowplot)
 library(magrittr)
-library("Cairo")
+library(Cairo)
+```
+
+```{r}
 rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source("funciones/muestra.R")
@@ -32,6 +34,7 @@ source("funciones/muestra.R")
 #source("funciones/funcionesSimulacion.R")
 source("funciones/funcionSimulaEstrVar-02.R")
 ```
+
 
 ## Lectura de datos
 
@@ -46,6 +49,9 @@ casillas_sonora <- read.csv("data/casillas_sonora.csv")  %>%
   distinct(seccion, casilla_tipo) %>%
   rbind(c(608, "RURAL"))
 casillas_sonora$seccion %<>% as.numeric()
+
+gobernador2015 %>%
+  head()
 ```
 
 Se agrega lista nominal a la tabla de resultados por casilla
@@ -62,6 +68,9 @@ gobernador2015 <- casillas_sonora %>%
   left_join(gobernador2015, ., by = "seccion") %>%
   mutate(distrito_tipo = paste(distrito_local,casilla_tipo))
 rm(casillas_sonora)
+
+gobernador2015 %>%
+  head()
 ```
 
 ## Resultado real
@@ -78,71 +87,68 @@ Tamaño de muestra y número de repeticiones
 ```{r}
 N <- length(gobernador2015$seccion_casilla)  # total de casillas
 n <- muestra(N)                              # Número de secciones en la muestra
-M <- 100                                    # Número de repeticiones
+M <- 3                                   # Número de repeticiones
 ```
 
-
-## Simulación
+## Resumen por distrito
 
 ```{r, message = FALSE}
 df.distritos <- gobernador2015 %>%
   group_by(distrito_local) %>%
   summarise(LN = sum(lista_nominal),
             Nh = n(),           # Casillas por distrito
+            #p = Nh / N) %>%
             p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
   mutate(nh = round(num.casillas = n * p)) %>%
   arrange(distrito_local)
 df.distritos
 ```
 
-```{r}
-  distritos <- df.distritos$distrito_local
+```{r, message = FALSE}
+distritos <- df.distritos$distrito_local
   nh <- df.distritos$nh
   Nh <- df.distritos$Nh
   L <- length(distritos)
-  #N <-sum(nh)
 
-  # Crea una matriz vacía para el resultado
   resultado <- data.frame()
-  df<-gobernador2015
-  # aquí se guardarán el estimador y varianza de cada partido, de cada muestra
+  df<-gobernador2015 # ELIMINAR
+  i <- 1 # ELIMINAR
+
   estPRI <-rep(0, M)
   estPAN <-rep(0, M)
-  #Gh <-rep(0, M)
   varPRI <-rep(0, M)
   varPAN <-rep(0, M)
   estTotal <-rep(0, M)
-  
+
   for(i in 1:M){
     muestra <- c() 
-    # en este ciclo se selecciona la muestra dentro de cada estrato
+    # Selecciona la muestra dentro de cada estrato
     for(j in 1: L){
       df %>%
         filter(distrito_local == distritos[j]) %>%
         select(seccion_casilla) -> df.muestra
       muestra <- c(muestra, sample(df.muestra$seccion_casilla, df.distritos$nh[j]))
     }
-
-    # Se calcula el porcentaje de votos de cada estrato para cada muestra
     
+    # Se calcula el porcentaje de votos de cada estrato para cada muestra
     df.temporal <- df %>%
       filter(seccion_casilla %in% muestra) %>%
       group_by(distrito_local) %>% 
       summarise(PRI = sum(total_coalicion), #suma sobre las casillas: 1 hasta nh
                 PAN = sum(pan),   # sum (Yhi)
-                Total = sum(total_votos_validos))
+                Total = sum(votacion_total_emitida)) # Xh
                 #Wh = Nh / nh)
     df.temporal <- cbind(df.temporal, Wh = Nh / nh)
-
+    
     estTotal[i] = df.temporal$Wh %*% df.temporal$Total #X gorro
     estPAN[i] = df.temporal$Wh %*% df.temporal$PAN / estTotal[i]
     estPRI[i] = df.temporal$Wh %*% df.temporal$PRI / estTotal[i]
-    
+
     df2 <- df %>%
       filter(seccion_casilla %in% muestra) %>%
       select(distrito_local, seccion_casilla, 
-             total_coalicion, pan, total_votos_validos) %>%
-      mutate(GhiPAN = (pan - estPAN[i]*total_votos_validos) / estTotal[i])
+             total_coalicion, pan, votacion_total_emitida) %>%
+      mutate(GhiPAN = (pan - estPAN[i]*votacion_total_emitida) / estTotal[i])
   
     df2 %>%
       group_by(distrito_local) %>%
@@ -160,33 +166,49 @@ df.distritos
       select(VarGhiPAN) -> VarGhiPAN
   
     varPAN[i] <- sum(Nh^2 * (1/nh - 1/Nh) * VarGhiPAN)
+
+    ## INICIA PRI
+    df3 <- df %>%
+      filter(seccion_casilla %in% muestra) %>%
+      select(distrito_local, seccion_casilla, 
+             total_coalicion, pan, votacion_total_emitida) %>%
+      mutate(GhiPRI = 
+               (total_coalicion - estPRI[i]*votacion_total_emitida) / estTotal[i])
+  
+    df3 %>%
+      group_by(distrito_local) %>%
+      summarise(Gh.barraPRI = mean(GhiPRI)) -> Gh.barraPRI
     
-    rm(df.temporal)
+    df3 <- df3 %>%
+      left_join(Gh.barraPRI) %>%
+      mutate(Ghi_GhPRI = (GhiPRI - Gh.barraPRI)^2)
+  
+    df3 %>%
+      group_by(distrito_local) %>%
+      summarise(numeradorPRI = sum(Ghi_GhPRI)) %>%
+      mutate(denominadorPRI = nh - 1,
+             VarGhiPRI = numeradorPRI / denominadorPRI) %>%
+      select(VarGhiPRI) -> VarGhiPRI
+  
+    varPRI[i] <- sum(Nh^2 * (1/nh - 1/Nh) * VarGhiPRI)
   }    
+  
   deltaPAN <- sqrt(varPAN) * 2.575
-  resultado <- cbind(estPRI, estPAN, varPRI, varPAN, deltaPAN)
-  colnames(resultado) <- c("estPRI", "estPAN", "varPRI", "varPAN", "deltaPAN")
+  deltaPRI <- sqrt(varPRI) * 2.575
+  
+  resultado <- cbind(estPRI, estPAN, varPRI, varPAN, deltaPAN, deltaPRI)
+  colnames(resultado) <- c("estPRI", "estPAN", 
+                           "varPRI", "varPAN", "deltaPAN", "deltaPRI")
   resultado <- resultado %>%
     as.data.frame() %>%
     mutate(dif.PRI = estPRI - resultadoReal$PRI,
            dif.PAN = estPAN - resultadoReal$PAN)
 ```
 
-
-#### Afijación proporcional
-
-```{r, message = FALSE, warning=FALSE}
-#source("funciones/funcionSimulaEstrVar.R")
-#simulacionESTR.prop <- funcionSimulaEstrVar(gobernador2015, n, M, df.distritos)
-```
-
-# CALCULO DE INTERVALO DE MUESTREO ESTRATIFICADO PROPORCIONAL E INDICADORES
-
 ```{r}
-simulacionESTR.prop <- resultado
+simulacionESTR01 <- resultado
 
-
-simulacionESTR.prop <- simulacionESTR.prop %>%
+simulacionESTR01 <- simulacionESTR01 %>%
   mutate(MinPRI = estPRI - (2.575 * sqrt(varPRI)),
          MaxPRI = estPRI + (2.575 * sqrt(varPRI)),
          MinPAN = estPAN - (2.575 * sqrt(varPAN)),
@@ -198,12 +220,23 @@ simulacionESTR.prop <- simulacionESTR.prop %>%
          longIntPAN = MaxPAN-MinPAN)
 captura_verdad <- data.frame()
 captura_verdad <- captura_verdad %>%
-  rbind(simulacionESTR.prop %>%
+  rbind(simulacionESTR01 %>%
           select(capturaPRI, capturaPAN, no.Traslape) %>%
           summarise(PRI.capturado = 100*length(capturaPRI[capturaPRI==TRUE]) / M,
                     PAN.capturado = 100*length(capturaPAN[capturaPAN==TRUE]) / M,
                     no.Traslapado = 100*length(no.Traslape[no.Traslape==TRUE])/M))
 captura_verdad
+
+simulacionESTR01 %>%
+  select(MinPAN, estPAN, MaxPAN, varPAN, deltaPAN, capturaPAN) %>%
+  head()
+
+simulacionESTR01 %>%
+  select(MinPRI, estPRI, MaxPRI, varPRI, deltaPRI, capturaPRI) %>%
+  head()
+
+hist(simulacionESTR01$estPAN)
+hist(simulacionESTR01$estPRI)
 ```
 
 ```{r, echo=FALSE}
@@ -218,30 +251,42 @@ Tema <- theme(plot.title = (element_text(size = 20, color = "black")),
               axis.title = element_text(size = 12, color = "black"))
 ```
 
-Error: Estratificado (proporcional)
-
+## Error: Estratificado (proporcional)
 
 ```{r}
-graficaError <-function(df.simulacion, vtitulo){
-  M <- length(df.simulacion[,1])
-  error <- ggplot(data=df.simulacion, aes(x=dif.PRI^2)) +
-    geom_histogram(bins=50, color="red", fill = "red", alpha=0.5)+
-    scale_y_continuous(labels = comma) +
-    theme_bw() + Tema +
-    labs(fill = "Partido", color= NULL, 
-         x = "Diferencia al cuadrado", 
-         y = "Observaciones", 
-         title = vtitulo,
-         caption = NULL, 
-         subtitle = paste("Errores de", M, "simulaciones respecto al resultado observado"))
-  show(error)
-}
+df.simulacion <- simulacionESTR01
+variable <- simulacionESTR01$dif.PRI
+error <- ggplot(data=df.simulacion, aes(x=variable^2)) +
+  geom_histogram(bins=50, color="red", fill = "red", alpha=0.5)+
+  scale_y_continuous(labels = comma) +
+  theme_bw() + Tema +
+  labs(fill = "Partido", color= NULL, 
+       x = "Diferencia al cuadrado", 
+       y = "Observaciones", 
+       title = NULL,
+       caption = NULL, 
+       subtitle = paste("Errores de", M, 
+                        "simulaciones respecto al resultado observado"))
+show(error)
 ```
 
 ```{r}
-titulo <- "Simulación: Muestreo estratificado (proporcional)"
-graficaError(simulacionESTR.prop, titulo)
+df.simulacion <- simulacionESTR01
+variable <- simulacionESTR01$dif.PAN
+error <- ggplot(data=df.simulacion, aes(x=variable^2)) +
+  geom_histogram(bins=50, color="blue", fill = "blue", alpha=0.5)+
+  scale_y_continuous(labels = comma) +
+  theme_bw() + Tema +
+  labs(fill = "Partido", color= NULL, 
+       x = "Diferencia al cuadrado", 
+       y = "Observaciones", 
+       title = NULL,
+       caption = NULL, 
+       subtitle = paste("Errores de", M, 
+                        "simulaciones respecto al resultado observado"))
+show(error)
 ```
+
 
 ```{r}
 graficaHistograma <-function(df.simulacion, vtitulo){
@@ -260,6 +305,6 @@ graficaHistograma <-function(df.simulacion, vtitulo){
 ```
 
 ```{r}
-simulacionESTR.prop %>%
+simulacionESTR01 %>%
   graficaHistograma("Simulación: Muestreo estratificado proporcional")
 ```
