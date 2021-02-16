@@ -31,212 +31,7 @@ rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source("funciones/muestra.R")
 #source("funciones/calculaECM.R")
-#source("funciones/funcionesSimulacion.R")
 source("funciones/funcionSimulaEstrVar-02.R")
-```
-
-
-## Lectura de datos
-
-```{r}
-gobernador2015<- read_excel("data/ComputoGobernador2015_Casilla.xlsx", 
-                            sheet = "POR CASILLA", skip = 1) %>%
-  clean_names()
-UbicacionCasillas2015 <- read_excel("data/UbicacionCasillas2015.xlsx", skip = 4) %>%
-  clean_names()
-casillas_sonora <- read.csv("data/casillas_sonora.csv")  %>%
-  select(seccion, casilla_tipo) %>%
-  distinct(seccion, casilla_tipo) %>%
-  rbind(c(608, "RURAL"))
-casillas_sonora$seccion %<>% as.numeric()
-
-gobernador2015 %>%
-  head()
-```
-
-Se agrega lista nominal a la tabla de resultados por casilla
-
-```{r}
-gobernador2015 <- UbicacionCasillas2015 %>%
-  left_join(gobernador2015, ., by = c("seccion", "casilla")) %>%
-  select(-c(distrito_local.y, municipio.y, domicilio)) %>%
-  mutate(seccion_casilla = paste(seccion, casilla)) %>%
-  rename(municipio = municipio.x,
-         distrito_local = distrito_local.x)
-  
-gobernador2015 <- casillas_sonora %>%
-  left_join(gobernador2015, ., by = "seccion") %>%
-  mutate(distrito_tipo = paste(distrito_local,casilla_tipo))
-rm(casillas_sonora)
-
-gobernador2015 %>%
-  head()
-```
-
-## Resultado real
-
-```{r}
-gobernador2015 %>%
-  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
-            PAN = sum(pan) / sum(votacion_total_emitida)) -> resultadoReal
-resultadoReal
-```
-
-Tamaño de muestra y número de repeticiones
-
-```{r}
-N <- length(gobernador2015$seccion_casilla)  # total de casillas
-n <- muestra(N)                              # Número de secciones en la muestra
-M <- 3                                   # Número de repeticiones
-```
-
-## Resumen por distrito
-
-```{r, message = FALSE}
-df.distritos <- gobernador2015 %>%
-  group_by(distrito_local) %>%
-  summarise(LN = sum(lista_nominal),
-            Nh = n(),           # Casillas por distrito
-            #p = Nh / N) %>%
-            p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
-  mutate(nh = round(num.casillas = n * p)) %>%
-  arrange(distrito_local)
-df.distritos
-```
-
-```{r, message = FALSE}
-distritos <- df.distritos$distrito_local
-  nh <- df.distritos$nh
-  Nh <- df.distritos$Nh
-  L <- length(distritos)
-
-  resultado <- data.frame()
-  df<-gobernador2015 # ELIMINAR
-  i <- 1 # ELIMINAR
-
-  estPRI <-rep(0, M)
-  estPAN <-rep(0, M)
-  varPRI <-rep(0, M)
-  varPAN <-rep(0, M)
-  estTotal <-rep(0, M)
-
-  for(i in 1:M){
-    muestra <- c() 
-    # Selecciona la muestra dentro de cada estrato
-    for(j in 1: L){
-      df %>%
-        filter(distrito_local == distritos[j]) %>%
-        select(seccion_casilla) -> df.muestra
-      muestra <- c(muestra, sample(df.muestra$seccion_casilla, df.distritos$nh[j]))
-    }
-    
-    # Se calcula el porcentaje de votos de cada estrato para cada muestra
-    df.temporal <- df %>%
-      filter(seccion_casilla %in% muestra) %>%
-      group_by(distrito_local) %>% 
-      summarise(PRI = sum(total_coalicion), #suma sobre las casillas: 1 hasta nh
-                PAN = sum(pan),   # sum (Yhi)
-                Total = sum(votacion_total_emitida)) # Xh
-                #Wh = Nh / nh)
-    df.temporal <- cbind(df.temporal, Wh = Nh / nh)
-    
-    estTotal[i] = df.temporal$Wh %*% df.temporal$Total #X gorro
-    estPAN[i] = df.temporal$Wh %*% df.temporal$PAN / estTotal[i]
-    estPRI[i] = df.temporal$Wh %*% df.temporal$PRI / estTotal[i]
-
-    df2 <- df %>%
-      filter(seccion_casilla %in% muestra) %>%
-      select(distrito_local, seccion_casilla, 
-             total_coalicion, pan, votacion_total_emitida) %>%
-      mutate(GhiPAN = (pan - estPAN[i]*votacion_total_emitida) / estTotal[i])
-  
-    df2 %>%
-      group_by(distrito_local) %>%
-      summarise(Gh.barraPAN = mean(GhiPAN)) -> Gh.barraPAN
-    
-    df2 <- df2 %>%
-      left_join(Gh.barraPAN) %>%
-      mutate(Ghi_GhPAN = (GhiPAN - Gh.barraPAN)^2)
-  
-    df2 %>%
-      group_by(distrito_local) %>%
-      summarise(numeradorPAN = sum(Ghi_GhPAN)) %>%
-      mutate(denominadorPAN = nh - 1,
-             VarGhiPAN = numeradorPAN / denominadorPAN) %>%
-      select(VarGhiPAN) -> VarGhiPAN
-  
-    varPAN[i] <- sum(Nh^2 * (1/nh - 1/Nh) * VarGhiPAN)
-
-    ## INICIA PRI
-    df3 <- df %>%
-      filter(seccion_casilla %in% muestra) %>%
-      select(distrito_local, seccion_casilla, 
-             total_coalicion, pan, votacion_total_emitida) %>%
-      mutate(GhiPRI = 
-               (total_coalicion - estPRI[i]*votacion_total_emitida) / estTotal[i])
-  
-    df3 %>%
-      group_by(distrito_local) %>%
-      summarise(Gh.barraPRI = mean(GhiPRI)) -> Gh.barraPRI
-    
-    df3 <- df3 %>%
-      left_join(Gh.barraPRI) %>%
-      mutate(Ghi_GhPRI = (GhiPRI - Gh.barraPRI)^2)
-  
-    df3 %>%
-      group_by(distrito_local) %>%
-      summarise(numeradorPRI = sum(Ghi_GhPRI)) %>%
-      mutate(denominadorPRI = nh - 1,
-             VarGhiPRI = numeradorPRI / denominadorPRI) %>%
-      select(VarGhiPRI) -> VarGhiPRI
-  
-    varPRI[i] <- sum(Nh^2 * (1/nh - 1/Nh) * VarGhiPRI)
-  }    
-  
-  deltaPAN <- sqrt(varPAN) * 2.575
-  deltaPRI <- sqrt(varPRI) * 2.575
-  
-  resultado <- cbind(estPRI, estPAN, varPRI, varPAN, deltaPAN, deltaPRI)
-  colnames(resultado) <- c("estPRI", "estPAN", 
-                           "varPRI", "varPAN", "deltaPAN", "deltaPRI")
-  resultado <- resultado %>%
-    as.data.frame() %>%
-    mutate(dif.PRI = estPRI - resultadoReal$PRI,
-           dif.PAN = estPAN - resultadoReal$PAN)
-```
-
-```{r}
-simulacionESTR01 <- resultado
-
-simulacionESTR01 <- simulacionESTR01 %>%
-  mutate(MinPRI = estPRI - (2.575 * sqrt(varPRI)),
-         MaxPRI = estPRI + (2.575 * sqrt(varPRI)),
-         MinPAN = estPAN - (2.575 * sqrt(varPAN)),
-         MaxPAN = estPAN + (2.575 * sqrt(varPAN)),
-         capturaPRI = resultadoReal$PRI > MinPRI & resultadoReal$PRI < MaxPRI,
-         capturaPAN = resultadoReal$PAN > MinPAN & resultadoReal$PAN < MaxPAN,
-         no.Traslape = MaxPAN < MinPRI,
-         longIntPRI = MaxPRI-MinPRI,
-         longIntPAN = MaxPAN-MinPAN)
-captura_verdad <- data.frame()
-captura_verdad <- captura_verdad %>%
-  rbind(simulacionESTR01 %>%
-          select(capturaPRI, capturaPAN, no.Traslape) %>%
-          summarise(PRI.capturado = 100*length(capturaPRI[capturaPRI==TRUE]) / M,
-                    PAN.capturado = 100*length(capturaPAN[capturaPAN==TRUE]) / M,
-                    no.Traslapado = 100*length(no.Traslape[no.Traslape==TRUE])/M))
-captura_verdad
-
-simulacionESTR01 %>%
-  select(MinPAN, estPAN, MaxPAN, varPAN, deltaPAN, capturaPAN) %>%
-  head()
-
-simulacionESTR01 %>%
-  select(MinPRI, estPRI, MaxPRI, varPRI, deltaPRI, capturaPRI) %>%
-  head()
-
-hist(simulacionESTR01$estPAN)
-hist(simulacionESTR01$estPRI)
 ```
 
 ```{r, echo=FALSE}
@@ -251,11 +46,220 @@ Tema <- theme(plot.title = (element_text(size = 20, color = "black")),
               axis.title = element_text(size = 12, color = "black"))
 ```
 
-## Error: Estratificado (proporcional)
+### Lectura de datos
 
 ```{r}
-df.simulacion <- simulacionESTR01
-variable <- simulacionESTR01$dif.PRI
+source("funciones/lecturaDatos.R")
+gobernador2015 <- lecturaDatos()
+#gobernador2015 %>% head()
+```
+
+### Resultado real
+
+```{r}
+gobernador2015 %>%
+  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
+            PAN = sum(pan) / sum(votacion_total_emitida)) -> resultadoReal
+resultadoReal
+```
+
+### Tamaño de muestra y número de repeticiones
+
+```{r}
+N <- length(gobernador2015$seccion_casilla)  # total de casillas
+n <- muestra(N)                              # Número de secciones en la muestra
+M <- 10                                   # Número de repeticiones
+#z <- qnorm(1-0.01/2)
+z <- 2.575
+```
+
+
+# Estratificación: Distritos
+
+```{r}
+source("funciones/simEstratificado.R")
+```
+
+## Resumen por distrito
+
+```{r}
+df.distritos <- gobernador2015 %>%
+  group_by(distrito_local) %>%
+  summarise(LN = sum(lista_nominal),
+            Nh = n(),           # Casillas por distrito
+            p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
+  mutate(nh = round(n * p),
+         nh12 = round(N * 0.12 * p),
+         nh15 = round(N * 0.15 * p),
+         nh25 = round(N * 0.25 * p)) %>%
+  arrange(distrito_local) %>%
+  rename(estrato = distrito_local)
+df.distritos
+```
+
+## Resumen por distrito y tipo de casilla
+
+```{r}
+df.distritosTipo <- gobernador2015 %>%
+  group_by(distrito_tipo) %>%
+  summarise(LN = sum(lista_nominal),
+            Nh = n(),           # Casillas por distrito
+            p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
+  mutate(nh = round(n * p),
+         nh12 = round(N * 0.12 * p),
+         nh15 = round(N * 0.15 * p),
+         nh25 = round(N * 0.25 * p)) %>%
+  mutate(nh = if_else(nh == 1, 2, nh),
+         nh12 = if_else(nh12 == 1, 2, nh12),
+         nh15 = if_else(nh15 == 1, 2, nh15),
+         nh25 = if_else(nh25 == 1, 2, nh25)) %>%
+  arrange(distrito_tipo) %>%
+  rename(estrato = distrito_tipo)
+df.distritosTipo
+```
+
+### Compara entre estratificar por distritos vs distritos y tipo de casilla. n = 346
+
+```{r}
+simDistrito <- gobernador2015 %>%
+  rename(estrato = distrito_local) %>%
+  simEstratificado(df.distritos$estrato, 
+                   df.distritos$Nh, df.distritos$nh)
+```
+
+```{r}
+simDistritoTipo <- gobernador2015 %>%
+  rename(estrato = distrito_tipo) %>%
+  simEstratificado(df.distritosTipo$estrato, 
+                   df.distritosTipo$Nh, df.distritosTipo$nh)
+```
+
+```{r, message = FALSE}
+simDistrito <- resumenSimulacion(simDistrito, z)
+simDistrito
+resumenCaptura(simDistrito)
+```
+
+```{r, message = FALSE}
+simDistritoTipo <- resumenSimulacion(simDistritoTipo, z)
+simDistritoTipo
+resumenCaptura(simDistritoTipo)
+```
+
+```{r}
+summary(simDistrito$deltaPAN)
+summary(simDistritoTipo$deltaPAN)
+summary(simDistrito$deltaPRI)
+summary(simDistritoTipo$deltaPRI)
+```
+
+Histograma delta PAN estratificación por distritos vs distritos y tipo de casilla
+
+```{r}
+par(mfrow=c(2,2))
+hist(simDistrito$deltaPAN, 
+     main = paste("n = ", sum(df.distritos$nh)), xlab = "delta PAN")
+hist(simDistrito$deltaPAN, 
+     main = paste("n = ", sum(df.distritos$nh)), xlab = "delta PAN")
+
+hist(simDistritoTipo$deltaPAN, 
+     main = paste("n = ", sum(df.distritosTipo$nh)), xlab = "delta PAN")
+hist(simDistritoTipo$deltaPAN, 
+     main = paste("n = ", sum(df.distritosTipo$nh)), xlab = "delta PAN")
+```
+
+Histograma delta PRI estratificación por distritos vs distritos y tipo de casilla
+
+```{r}
+par(mfrow=c(2,2))
+hist(simDistrito$deltaPRI, 
+     main = paste("n = ", sum(df.distritos$nh)), xlab = "delta PRI")
+hist(simDistrito$deltaPRI, 
+     main = paste("n = ", sum(df.distritos$nh)), xlab = "delta PRI")
+
+hist(simDistritoTipo$deltaPRI, 
+     main = paste("n = ", sum(df.distritosTipo$nh)), xlab = "delta PRI")
+hist(simDistritoTipo$deltaPRI, 
+     main = paste("n = ", sum(df.distritosTipo$nh)), xlab = "delta PRI")
+```
+
+### Muestra de tamaño 12% de N
+
+```{r}
+simDistrito12 <- gobernador2015 %>%
+  rename(estrato = distrito_local) %>%
+  simEstratificado(df.distritos$estrato, df.distritos$Nh, df.distritos$nh12)
+
+simDistritoTipo12 <- gobernador2015 %>%
+  rename(estrato = distrito_tipo) %>%
+  simEstratificado(df.distritosTipo$estrato, df.distritosTipo$Nh, df.distritosTipo$nh12)
+```
+
+### Muestra de tamaño 15% de N
+
+```{r}
+simDistrito15 <- gobernador2015 %>%
+  rename(estrato = distrito_local) %>%
+  simEstratificado(df.distritos$estrato, df.distritos$Nh, df.distritos$nh15)
+
+simDistritoTipo15 <- gobernador2015 %>%
+  rename(estrato = distrito_tipo) %>%
+  simEstratificado(df.distritosTipo$estrato, df.distritosTipo$Nh, df.distritosTipo$nh15)
+```
+
+### Muestra de tamaño 25% de N
+
+```{r}
+simDistrito25 <- gobernador2015 %>%
+  rename(estrato = distrito_local) %>%
+  simEstratificado(df.distritos$estrato, df.distritos$Nh, df.distritos$nh25)
+
+simDistritoTipo25 <- gobernador2015 %>%
+  rename(estrato = distrito_tipo) %>%
+  simEstratificado(df.distritosTipo$estrato, df.distritosTipo$Nh, df.distritosTipo$nh25)
+```
+
+
+```{r}
+par(mfrow=c(4,2))
+hist(simDistrito$deltaPAN, 
+     main = paste("n = ", sum(df.distritos$nh)), xlab = "delta PAN")
+hist(simDistrito12$deltaPAN, 
+     main = paste("n = ", sum(df.distritos$nh12)), xlab = "delta PAN")
+hist(simDistrito15$deltaPAN, 
+     main = paste("n = ", sum(df.distritos$nh15)), xlab = "delta PAN")
+hist(simDistrito25$deltaPAN, 
+     main = paste("n = ", sum(df.distritos$nh25)), xlab = "delta PAN")
+
+hist(simDistrito$deltaPRI, 
+     main = paste("n = ", sum(df.distritos$nh)), xlab = "delta PRI")
+hist(simDistrito12$deltaPRI, 
+     main = paste("n = ", sum(df.distritos$nh12)), xlab = "delta PRI")
+hist(simDistrito15$deltaPRI, 
+     main = paste("n = ", sum(df.distritos$nh15)), xlab = "delta PRI")
+hist(simDistrito25$deltaPRI, 
+     main = paste("n = ", sum(df.distritos$nh25)), xlab = "delta PRI")
+```
+
+
+```{r}
+# Resumen PAN
+simDistrito %>%
+  select(MinPAN, estPAN, MaxPAN, varPAN, deltaPAN, capturaPAN) %>%
+  head()
+
+# Resumen PRI
+simDistrito %>%
+  select(MinPRI, estPRI, MaxPRI, varPRI, deltaPRI, capturaPRI) %>%
+  head()
+```
+
+
+## Error
+
+```{r}
+df.simulacion <- simDistrito
+variable <- simDistrito$dif.PRI
 error <- ggplot(data=df.simulacion, aes(x=variable^2)) +
   geom_histogram(bins=50, color="red", fill = "red", alpha=0.5)+
   scale_y_continuous(labels = comma) +
@@ -271,8 +275,8 @@ show(error)
 ```
 
 ```{r}
-df.simulacion <- simulacionESTR01
-variable <- simulacionESTR01$dif.PAN
+df.simulacion <- simDistrito
+variable <- simDistrito$dif.PAN
 error <- ggplot(data=df.simulacion, aes(x=variable^2)) +
   geom_histogram(bins=50, color="blue", fill = "blue", alpha=0.5)+
   scale_y_continuous(labels = comma) +
@@ -305,6 +309,6 @@ graficaHistograma <-function(df.simulacion, vtitulo){
 ```
 
 ```{r}
-simulacionESTR01 %>%
+simDistrito %>%
   graficaHistograma("Simulación: Muestreo estratificado proporcional")
 ```
