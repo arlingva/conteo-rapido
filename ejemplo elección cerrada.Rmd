@@ -59,7 +59,10 @@ gobernador2015 <- lecturaDatos()
 ```{r}
 gobernador2015 %>%
   summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
-            PAN = sum(pan) / sum(votacion_total_emitida)) -> resultadoReal
+            #suma = sum(pan) + sum(prd) + sum(morena) + sum(humanista),
+            suma = sum(pan) + sum(prd) + sum(morena),
+            PAN = sum(suma) / sum(votacion_total_emitida)) %>%
+  select(PRI, PAN) -> resultadoReal
 resultadoReal
 ```
 
@@ -68,7 +71,7 @@ resultadoReal
 ```{r}
 N <- length(gobernador2015$seccion_casilla)  # total de casillas
 n <- muestra(N)                              # Número de secciones en la muestra
-M <- 10                                   # Número de repeticiones
+M <- 1                                   # Número de repeticiones
 #z <- qnorm(1-0.01/2)
 #z <- 1.96
 z <- 2.575
