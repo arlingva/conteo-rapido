@@ -1,0 +1,237 @@
+---
+title: "Conteo rapido muestra estratificada proporcional"
+author: "Equipo 1"
+date: "2/5/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+library(readxl)
+library(dplyr)
+library(janitor)
+library(kableExtra)
+library(tidyverse)
+library(extrafont)
+library(scales)
+library(showtext)
+library(tint)
+library(miniUI)
+library(units)
+library(ggfortify)
+library(cowplot)
+library(magrittr)
+library(Cairo)
+library(plotly)
+```
+
+```{r}
+rm(list = ls())
+`%notin%` = function(x,y) !(x %in% y)
+source("funciones/muestra.R")
+#source("funciones/calculaECM.R")
+#source("funciones/funcionSimulaEstrVar-02.R")
+```
+
+### Lectura de datos
+
+```{r}
+source("funciones/lecturaDatos.R")
+gobernador2015 <- lecturaDatos() 
+#gobernador2015 %>% head()
+```
+
+### Resultado real
+
+```{r}
+gobernador2015 %>%
+  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
+            PAN = sum(pan) / sum(votacion_total_emitida)) %>%
+  select(PRI, PAN) -> resultadoReal
+
+resultadoReal$PAN - resultadoReal$PRI
+resultadoReal
+```
+
+### Tamaño de muestra y número de repeticiones
+
+```{r}
+N <- length(gobernador2015$seccion_casilla)  # total de casillas
+n <- muestra(N)                              # Número de secciones en la muestra
+M <- 10                                   # Número de repeticiones
+#z <- qnorm(1-0.01/2)
+#z <- 1.96
+z <- 2.575
+```
+
+# Estratificación: Distritos
+
+```{r}
+source("funciones/simEstratificado.R")
+source("funciones/simEstratificadoHorarios.R")
+```
+
+## Resumen por distrito
+
+```{r}
+df.distritos <- gobernador2015 %>%
+  group_by(distrito_local) %>%
+  summarise(LN = sum(lista_nominal),
+            Nh = n(),           # Casillas por distrito
+            p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
+  mutate(nh = round(n * p),
+         nh12 = round(N * 0.12 * p),
+         nh15 = round(N * 0.15 * p),
+         nh25 = round(N * 0.25 * p)) %>%
+  arrange(distrito_local) %>%
+  rename(estrato = distrito_local)
+#df.distritos
+```
+
+## Resultados según porcentaje de avance: Caso real
+
+```{r, echo = FALSE}
+df0 <- gobernador2015 %>%
+  rename(estrato = distrito_local) 
+
+gobernador2015 %>%
+  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
+            PAN = sum(pan) / sum(votacion_total_emitida)) %>%
+  select(PRI, PAN) -> resultadoReal
+
+resultadoReal
+```
+
+```{r, echo = FALSE}
+avance <-seq(0.4, 1, by=0.1)
+
+x<-data.frame()
+for(i in 2:length(avance)){
+  simEstratificadoHorarios(df0, df.distritos$estrato, 
+                         df.distritos$Nh, df.distritos$nh, 
+                         vM = 1, pcapturado = avance[i]) %>%
+  select(estPRI, estPAN, deltaPRI, deltaPAN) %>%
+  cbind(porc.avance = avance[i]) -> temp
+  x <- rbind(x, temp)
+}
+```
+
+```{r, echo = FALSE}
+data <- x %>%
+  mutate(minPRI = estPRI - deltaPRI,
+         maxPRI = estPRI + deltaPRI,
+         minPAN = estPAN - deltaPAN,
+         maxPAN = estPAN + deltaPAN)
+
+
+fig <- plot_ly(data, x = ~porc.avance) 
+fig <- fig %>%
+  add_trace(y = ~maxPRI, name = 'PRI', type = "scatter", mode = "lines",
+            line = list(color = 'transparent')) %>%
+  add_trace(y = ~minPRI, name = 'PRI', type = "scatter", mode = "lines",
+            line = list(color = 'transparent'), fill = 'tonexty',
+            fillcolor='rgba(100,0,0,0.2)') %>%
+  add_trace(y = ~estPRI, name = 'PRI', mode = "lines",
+            line = list(color = 'red'))  %>%
+  add_trace(y = ~maxPAN, name = 'PAN', type = "scatter", mode = "lines",
+            line = list(color = 'transparent')) %>%
+  add_trace(y = ~minPAN, name = 'PAN', type = "scatter", mode = "lines",
+            line = list(color = 'transparent'), fill = 'tonexty',
+            fillcolor='rgba(0,0,100,0.2)') %>%
+  add_trace(y = ~estPAN, name = 'PAN', mode = "lines",
+            line = list(color = 'blue')) 
+  
+fig
+```
+
+```{r}
+simDistrito <- gobernador2015 %>%
+  rename(estrato = distrito_local) %>%
+  simEstratificadoHorarios(df.distritos$estrato, 
+                   df.distritos$Nh, df.distritos$nh, vM = M, pcapturado = 0.7)
+```
+
+```{r, message = FALSE}
+resumenSimulacion(simDistrito, z) %>%
+  head()
+
+resumenSimulacion(simDistrito, z) %>% 
+  resumenCaptura()
+```
+
+```{r}
+gobernador2015 <- lecturaDatos() %>%
+  rename(pan0 = pan) %>%
+  mutate(pan = pan0 + prd + morena)
+  
+gobernador2015 %>%
+  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
+            PAN = sum(pan) / sum(votacion_total_emitida)) %>%
+  select(PRI, PAN) -> resultadoReal
+
+resultadoReal
+```
+
+```{r, echo = FALSE}
+df0 <- gobernador2015 %>%
+  rename(estrato = distrito_local)
+
+avance <-seq(0.4, 1, by=0.1)
+
+x<-data.frame()
+for(i in 2:length(avance)){
+  simEstratificadoHorarios(df0, df.distritos$estrato, 
+                         df.distritos$Nh, df.distritos$nh, 
+                         vM = 1, pcapturado = avance[i]) %>%
+  select(estPRI, estPAN, deltaPRI, deltaPAN) %>%
+  cbind(porc.avance = avance[i]) -> temp
+  x <- rbind(x, temp)
+}
+```
+
+```{r, echo = FALSE}
+data <- x %>%
+  mutate(minPRI = estPRI - deltaPRI,
+         maxPRI = estPRI + deltaPRI,
+         minPAN = estPAN - deltaPAN,
+         maxPAN = estPAN + deltaPAN)
+
+fig <- plot_ly(data, x = ~porc.avance) 
+fig <- fig %>%
+  add_trace(y = ~maxPRI, name = 'PRI', type = "scatter", mode = "lines",
+            line = list(color = 'transparent')) %>%
+  add_trace(y = ~minPRI, name = 'PRI', type = "scatter", mode = "lines",
+            line = list(color = 'transparent'), fill = 'tonexty',
+            fillcolor='rgba(100,0,0,0.2)') %>%
+  add_trace(y = ~estPRI, name = 'PRI', mode = "lines",
+            line = list(color = 'red'))  %>%
+  add_trace(y = ~maxPAN, name = 'PAN', type = "scatter", mode = "lines",
+            line = list(color = 'transparent')) %>%
+  add_trace(y = ~minPAN, name = 'PAN', type = "scatter", mode = "lines",
+            line = list(color = 'transparent'), fill = 'tonexty',
+            fillcolor='rgba(0,0,100,0.2)') %>%
+  add_trace(y = ~estPAN, name = 'PAN', mode = "lines",
+            line = list(color = 'blue')) 
+  
+fig
+```
+
+```{r}
+simDistrito <- gobernador2015 %>%
+  rename(estrato = distrito_local) %>%
+  simEstratificadoHorarios(df.distritos$estrato, 
+                   df.distritos$Nh, df.distritos$nh, vM = M, pcapturado = 0.7)
+```
+
+```{r, message = FALSE}
+resumenSimulacion(simDistrito, z) %>%
+  head()
+
+resumenSimulacion(simDistrito, z) %>% 
+  resumenCaptura()
+```
+
+
+

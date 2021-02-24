@@ -130,13 +130,12 @@ simulacionESTR.simple <- funcionSimulaEstrSimple(gobernador2015, n, M, df.distri
 
 #### Afijación proporcional
 
-<<<<<<< HEAD
 ```{r, message = FALSE}
 source("funciones/funcionesSimulacion.R")
 #simulacionESTR.prop <- funcionSimulaEstrProp(gobernador2015, n, M, df.distritos)
-=======
+```
+
 ```{r, message = FALSE, warning=FALSE}
->>>>>>> 0707ff4ca268cf0e2ed346d9bbe9798a726bf70a
 simulacionESTR.prop <- funcionSimulaEstrVar(gobernador2015, n, M, df.distritos)
 ```
 
