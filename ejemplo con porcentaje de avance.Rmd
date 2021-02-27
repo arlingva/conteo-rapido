@@ -12,19 +12,19 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 library(readxl)
 library(dplyr)
 library(janitor)
-library(kableExtra)
-library(tidyverse)
-library(extrafont)
-library(scales)
-library(showtext)
-library(tint)
-library(miniUI)
-library(units)
-library(ggfortify)
-library(cowplot)
+#library(kableExtra)
+#library(tidyverse)
+#library(extrafont)
+#library(scales)
+#library(showtext)
+#library(tint)
+#library(miniUI)
+#library(units)
+#library(ggfortify)
+#library(cowplot)
 library(magrittr)
-library(Cairo)
-library(plotly)
+#library(Cairo)
+#library(plotly)
 ```
 
 ```{r}
@@ -69,7 +69,7 @@ z <- 2.575
 # Estratificación: Distritos
 
 ```{r}
-source("funciones/simEstratificado.R")
+#source("funciones/simEstratificado.R")
 source("funciones/simEstratificadoHorarios.R")
 ```
 
@@ -101,7 +101,7 @@ gobernador2015 %>%
             PAN = sum(pan) / sum(votacion_total_emitida)) %>%
   select(PRI, PAN) -> resultadoReal
 
-resultadoReal
+resultadoReal*100
 ```
 
 ```{r, echo = FALSE}
@@ -171,7 +171,7 @@ gobernador2015 %>%
             PAN = sum(pan) / sum(votacion_total_emitida)) %>%
   select(PRI, PAN) -> resultadoReal
 
-resultadoReal
+resultadoReal*100
 ```
 
 ```{r, echo = FALSE}

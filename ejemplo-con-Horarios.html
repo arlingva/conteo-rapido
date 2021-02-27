@@ -2311,13 +2311,11 @@ summary {
 <pre class="r"><code>rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source(&quot;funciones/muestra.R&quot;)
-#source(&quot;funciones/calculaECM.R&quot;)
-#source(&quot;funciones/funcionSimulaEstrVar-02.R&quot;)</code></pre>
+source(&quot;funciones/simEstratificadoMuestraFija.R&quot;)</code></pre>
 <div id="lectura-de-datos" class="section level3">
 <h3>Lectura de datos</h3>
 <pre class="r"><code>source(&quot;funciones/lecturaDatos.R&quot;)
-gobernador2015 &lt;- lecturaDatos() 
-#gobernador2015 %&gt;% head()</code></pre>
+gobernador2015 &lt;- lecturaDatos() </code></pre>
 </div>
 <div id="resultado-real" class="section level3">
 <h3>Resultado real</h3>
@@ -2326,31 +2324,25 @@ gobernador2015 &lt;- lecturaDatos()
             PAN = sum(pan) / sum(votacion_total_emitida)) %&gt;%
   select(PRI, PAN) -&gt; resultadoReal
 
-resultadoReal$PAN - resultadoReal$PRI</code></pre>
-<pre><code>## [1] -0.06957865</code></pre>
-<pre class="r"><code>resultadoReal</code></pre>
+resultadoReal</code></pre>
 <pre><code>## # A tibble: 1 x 2
 ##     PRI   PAN
 ##   &lt;dbl&gt; &lt;dbl&gt;
 ## 1 0.476 0.406</code></pre>
 </div>
-<div id="tamaño-de-muestra-y-número-de-repeticiones" class="section level3">
-<h3>Tamaño de muestra y número de repeticiones</h3>
+<div id="tamaño-de-muestra" class="section level3">
+<h3>Tamaño de muestra</h3>
 <pre class="r"><code>N &lt;- length(gobernador2015$seccion_casilla)  # total de casillas
 n &lt;- muestra(N)                              # Número de secciones en la muestra
-M &lt;- 10                                   # Número de repeticiones
+
+z &lt;- 2.575
 #z &lt;- qnorm(1-0.01/2)
-#z &lt;- 1.96
-z &lt;- 2.575</code></pre>
+#z &lt;- 1.96</code></pre>
 </div>
-<div id="estratificación-distritos" class="section level1">
-<h1>Estratificación: Distritos</h1>
-<pre class="r"><code>source(&quot;funciones/simEstratificado.R&quot;)
-source(&quot;funciones/simEstratificadoHorarios.R&quot;)</code></pre>
-<div id="resumen-por-distrito" class="section level2">
-<h2>Resumen por distrito</h2>
-<pre class="r"><code>df.distritos &lt;- gobernador2015 %&gt;%
-  group_by(distrito_local) %&gt;%
+<div id="resumen-por-distrito" class="section level3">
+<h3>Resumen por distrito</h3>
+<pre class="r"><code>df.distritosTipo &lt;- gobernador2015 %&gt;%
+  group_by(distrito_tipo) %&gt;%
   summarise(LN = sum(lista_nominal),
             Nh = n(),           # Casillas por distrito
             p = LN/sum(gobernador2015$lista_nominal)) %&gt;%   # Proporción
@@ -2358,98 +2350,92 @@ source(&quot;funciones/simEstratificadoHorarios.R&quot;)</code></pre>
          nh12 = round(N * 0.12 * p),
          nh15 = round(N * 0.15 * p),
          nh25 = round(N * 0.25 * p)) %&gt;%
-  arrange(distrito_local) %&gt;%
-  rename(estrato = distrito_local)
-#df.distritos</code></pre>
+  mutate(nh = if_else(nh == 1, 2, nh),
+         nh12 = if_else(nh12 == 1, 2, nh12),
+         nh15 = if_else(nh15 == 1, 2, nh15),
+         nh25 = if_else(nh25 == 1, 2, nh25)) %&gt;%
+  arrange(distrito_tipo) %&gt;%
+  rename(estrato = distrito_tipo)</code></pre>
 </div>
-<div id="resultados-según-porcentaje-de-avance-caso-real" class="section level2">
-<h2>Resultados según porcentaje de avance: Caso real</h2>
-<pre><code>##        PRI      PAN
-## 1 47.58621 40.62835</code></pre>
-<pre><code>## Warning: `arrange_()` is deprecated as of dplyr 0.7.0.
-## Please use `arrange()` instead.
-## See vignette(&#39;programming&#39;) for more help
-## This warning is displayed once every 8 hours.
-## Call `lifecycle::last_warnings()` to see where this warning was generated.</code></pre>
-<div id="htmlwidget-4b41ed5fa9aa5101f7f7" style="width:672px;height:480px;" class="plotly html-widget"></div>
-<script type="application/json" data-for="htmlwidget-4b41ed5fa9aa5101f7f7">{"x":{"visdat":{"98115eab2f7":["function () ","plotlyVisDat"]},"cur_data":"98115eab2f7","attrs":{"98115eab2f7":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"name":"PRI","type":"scatter","mode":"lines","line":{"color":"transparent"},"inherit":true},"98115eab2f7.1":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"name":"PRI","type":"scatter","mode":"lines","line":{"color":"transparent"},"fill":"tonexty","fillcolor":"rgba(100,0,0,0.2)","inherit":true},"98115eab2f7.2":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"name":"PRI","mode":"lines","line":{"color":"red"},"inherit":true},"98115eab2f7.3":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"name":"PAN","type":"scatter","mode":"lines","line":{"color":"transparent"},"inherit":true},"98115eab2f7.4":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"name":"PAN","type":"scatter","mode":"lines","line":{"color":"transparent"},"fill":"tonexty","fillcolor":"rgba(0,0,100,0.2)","inherit":true},"98115eab2f7.5":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"name":"PAN","mode":"lines","line":{"color":"blue"},"inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"xaxis":{"domain":[0,1],"automargin":true,"title":"porc.avance"},"yaxis":{"domain":[0,1],"automargin":true,"title":"maxPRI"},"hovermode":"closest","showlegend":true},"source":"A","config":{"showSendToCloud":false},"data":[{"x":[0.5,0.6,0.7,0.8,0.9,1],"y":[0.481749983196086,0.493729002039068,0.482697416251488,0.487159035319397,0.478635185787252,0.491100399327557],"name":"PRI","type":"scatter","mode":"lines","line":{"color":"transparent"},"marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"error_y":{"color":"rgba(31,119,180,1)"},"error_x":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"fillcolor":"rgba(100,0,0,0.2)","x":[0.5,0.6,0.7,0.8,0.9,1],"y":[0.441147012379876,0.461463606912818,0.450728394593585,0.459759045901024,0.460907736959921,0.469528456379773],"name":"PRI","type":"scatter","mode":"lines","line":{"color":"transparent"},"fill":"tonexty","marker":{"color":"rgba(255,127,14,1)","line":{"color":"rgba(255,127,14,1)"}},"error_y":{"color":"rgba(255,127,14,1)"},"error_x":{"color":"rgba(255,127,14,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[0.5,0.6,0.7,0.8,0.9,1],"y":[0.461448497787981,0.477596304475943,0.466712905422537,0.47345904061021,0.469771461373587,0.480314427853665],"name":"PRI","mode":"lines","line":{"color":"red"},"type":"scatter","marker":{"color":"rgba(44,160,44,1)","line":{"color":"rgba(44,160,44,1)"}},"error_y":{"color":"rgba(44,160,44,1)"},"error_x":{"color":"rgba(44,160,44,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[0.5,0.6,0.7,0.8,0.9,1],"y":[0.441393669854306,0.417048742960238,0.428001133217506,0.421346661492873,0.424930355396771,0.413209961568188],"name":"PAN","type":"scatter","mode":"lines","line":{"color":"transparent"},"marker":{"color":"rgba(214,39,40,1)","line":{"color":"rgba(214,39,40,1)"}},"error_y":{"color":"rgba(214,39,40,1)"},"error_x":{"color":"rgba(214,39,40,1)"},"xaxis":"x","yaxis":"y","frame":null},{"fillcolor":"rgba(0,0,100,0.2)","x":[0.5,0.6,0.7,0.8,0.9,1],"y":[0.39827957720219,0.381351115276272,0.397594274165993,0.394660671042488,0.405725661077689,0.390671313703725],"name":"PAN","type":"scatter","mode":"lines","line":{"color":"transparent"},"fill":"tonexty","marker":{"color":"rgba(148,103,189,1)","line":{"color":"rgba(148,103,189,1)"}},"error_y":{"color":"rgba(148,103,189,1)"},"error_x":{"color":"rgba(148,103,189,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[0.5,0.6,0.7,0.8,0.9,1],"y":[0.419836623528248,0.399199929118255,0.412797703691749,0.40800366626768,0.41532800823723,0.401940637635957],"name":"PAN","mode":"lines","line":{"color":"blue"},"type":"scatter","marker":{"color":"rgba(140,86,75,1)","line":{"color":"rgba(140,86,75,1)"}},"error_y":{"color":"rgba(140,86,75,1)"},"error_x":{"color":"rgba(140,86,75,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
-<pre class="r"><code>simDistrito &lt;- gobernador2015 %&gt;%
-  rename(estrato = distrito_local) %&gt;%
-  simEstratificadoHorarios(df.distritos$estrato, 
-                   df.distritos$Nh, df.distritos$nh, vM = M, pcapturado = 0.7)</code></pre>
-<pre class="r"><code>resumenSimulacion(simDistrito, z) %&gt;%
-  head()</code></pre>
-<pre><code>##      estPRI    estPAN       varPRI       varPAN   deltaPAN   deltaPRI
-## 1 0.4793526 0.4008664 3.956202e-05 3.803183e-05 0.01588001 0.01619632
-## 2 0.4770084 0.4046987 3.436576e-05 3.692233e-05 0.01564667 0.01509525
-## 3 0.4775561 0.4017471 3.435639e-05 3.643561e-05 0.01554319 0.01509319
-## 4 0.4829189 0.4002493 3.577598e-05 2.854986e-05 0.01375876 0.01540185
-## 5 0.4700930 0.4146027 2.748622e-05 3.164683e-05 0.01448580 0.01350003
-## 6 0.4698596 0.4106366 4.156427e-05 4.377026e-05 0.01703597 0.01660112
-##        dif.PRI      dif.PAN    MinPRI    MaxPRI    MinPAN    MaxPAN capturaPRI
-## 1  0.003490473 -0.005417119 0.4631563 0.4955489 0.3849863 0.4167464       TRUE
-## 2  0.001146264 -0.001584744 0.4619131 0.4921036 0.3890521 0.4203454       TRUE
-## 3  0.001693981 -0.004536406 0.4624629 0.4926493 0.3862039 0.4172903       TRUE
-## 4  0.007056732 -0.006034129 0.4675170 0.4983207 0.3864906 0.4140081       TRUE
-## 5 -0.005769099  0.008319243 0.4565930 0.4835931 0.4001169 0.4290885       TRUE
-## 6 -0.006002531  0.004353145 0.4532585 0.4864607 0.3936006 0.4276726       TRUE
-##   capturaPAN no.Traslape
-## 1       TRUE        TRUE
-## 2       TRUE        TRUE
-## 3       TRUE        TRUE
-## 4       TRUE        TRUE
-## 5       TRUE        TRUE
-## 6       TRUE        TRUE</code></pre>
-<pre class="r"><code>resumenSimulacion(simDistrito, z) %&gt;% 
-  resumenCaptura()</code></pre>
-<pre><code>##   PRI.capturado PAN.capturado no.Traslapado
-## 1           100           100           100</code></pre>
-<pre class="r"><code>gobernador2015 &lt;- lecturaDatos() %&gt;%
-  rename(pan0 = pan) %&gt;%
-  mutate(pan = pan0 + prd + morena)
-  
-gobernador2015 %&gt;%
-  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
-            PAN = sum(pan) / sum(votacion_total_emitida)) %&gt;%
-  select(PRI, PAN) -&gt; resultadoReal
+<div id="función-hora-aleatoria-uniforme" class="section level3">
+<h3>Función hora aleatoria (uniforme)</h3>
+<pre class="r"><code>rand.date = function(start.time, end.time, size){
+  times &lt;- seq(from=as.POSIXct(start.time), 
+               to=as.POSIXct(end.time), by=&quot;min&quot;)  
+  U &lt;- runif(size, 1, length(times))  
+  #weibull.times &lt;- (1/vlambda) *(-log(1-U))^(1/valpha)
+  date=times[U] 
+  return(date)
+}
 
-resultadoReal*100</code></pre>
-<pre><code>##        PRI      PAN
-## 1 47.58621 46.81282</code></pre>
-<div id="htmlwidget-f3bf930679b01d2a00f5" style="width:672px;height:480px;" class="plotly html-widget"></div>
-<script type="application/json" data-for="htmlwidget-f3bf930679b01d2a00f5">{"x":{"visdat":{"9813658aa94":["function () ","plotlyVisDat"]},"cur_data":"9813658aa94","attrs":{"9813658aa94":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"name":"PRI","type":"scatter","mode":"lines","line":{"color":"transparent"},"inherit":true},"9813658aa94.1":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"name":"PRI","type":"scatter","mode":"lines","line":{"color":"transparent"},"fill":"tonexty","fillcolor":"rgba(100,0,0,0.2)","inherit":true},"9813658aa94.2":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"name":"PRI","mode":"lines","line":{"color":"red"},"inherit":true},"9813658aa94.3":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"name":"PAN","type":"scatter","mode":"lines","line":{"color":"transparent"},"inherit":true},"9813658aa94.4":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"name":"PAN","type":"scatter","mode":"lines","line":{"color":"transparent"},"fill":"tonexty","fillcolor":"rgba(0,0,100,0.2)","inherit":true},"9813658aa94.5":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"name":"PAN","mode":"lines","line":{"color":"blue"},"inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"xaxis":{"domain":[0,1],"automargin":true,"title":"porc.avance"},"yaxis":{"domain":[0,1],"automargin":true,"title":"maxPRI"},"hovermode":"closest","showlegend":true},"source":"A","config":{"showSendToCloud":false},"data":[{"x":[0.5,0.6,0.7,0.8,0.9,1],"y":[0.485119323835815,0.499643736076788,0.492662612599053,0.492175320322894,0.48383840681663,0.489525880310225],"name":"PRI","type":"scatter","mode":"lines","line":{"color":"transparent"},"marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"error_y":{"color":"rgba(31,119,180,1)"},"error_x":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"fillcolor":"rgba(100,0,0,0.2)","x":[0.5,0.6,0.7,0.8,0.9,1],"y":[0.438612339949612,0.460505227131015,0.464606951061712,0.467513629178079,0.461199589503805,0.469094169354521],"name":"PRI","type":"scatter","mode":"lines","line":{"color":"transparent"},"fill":"tonexty","marker":{"color":"rgba(255,127,14,1)","line":{"color":"rgba(255,127,14,1)"}},"error_y":{"color":"rgba(255,127,14,1)"},"error_x":{"color":"rgba(255,127,14,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[0.5,0.6,0.7,0.8,0.9,1],"y":[0.461865831892713,0.480074481603902,0.478634781830382,0.479844474750486,0.472518998160218,0.479310024832373],"name":"PRI","mode":"lines","line":{"color":"red"},"type":"scatter","marker":{"color":"rgba(44,160,44,1)","line":{"color":"rgba(44,160,44,1)"}},"error_y":{"color":"rgba(44,160,44,1)"},"error_x":{"color":"rgba(44,160,44,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[0.5,0.6,0.7,0.8,0.9,1],"y":[0.504454328109399,0.485039759307332,0.48317511749278,0.475828040419666,0.484522228172017,0.47478392355459],"name":"PAN","type":"scatter","mode":"lines","line":{"color":"transparent"},"marker":{"color":"rgba(214,39,40,1)","line":{"color":"rgba(214,39,40,1)"}},"error_y":{"color":"rgba(214,39,40,1)"},"error_x":{"color":"rgba(214,39,40,1)"},"xaxis":"x","yaxis":"y","frame":null},{"fillcolor":"rgba(0,0,100,0.2)","x":[0.5,0.6,0.7,0.8,0.9,1],"y":[0.459641463346164,0.448604561373571,0.454975154325999,0.452449000764082,0.462803945158581,0.455831566254162],"name":"PAN","type":"scatter","mode":"lines","line":{"color":"transparent"},"fill":"tonexty","marker":{"color":"rgba(148,103,189,1)","line":{"color":"rgba(148,103,189,1)"}},"error_y":{"color":"rgba(148,103,189,1)"},"error_x":{"color":"rgba(148,103,189,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[0.5,0.6,0.7,0.8,0.9,1],"y":[0.482047895727782,0.466822160340451,0.46907513590939,0.464138520591874,0.473663086665299,0.465307744904376],"name":"PAN","mode":"lines","line":{"color":"blue"},"type":"scatter","marker":{"color":"rgba(140,86,75,1)","line":{"color":"rgba(140,86,75,1)"}},"error_y":{"color":"rgba(140,86,75,1)"},"error_x":{"color":"rgba(140,86,75,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
-<pre class="r"><code>simDistrito &lt;- gobernador2015 %&gt;%
-  rename(estrato = distrito_local) %&gt;%
-  simEstratificadoHorarios(df.distritos$estrato, 
-                   df.distritos$Nh, df.distritos$nh, vM = M, pcapturado = 0.7)</code></pre>
-<pre class="r"><code>resumenSimulacion(simDistrito, z) %&gt;%
-  head()</code></pre>
-<pre><code>##      estPRI    estPAN       varPRI       varPAN   deltaPAN   deltaPRI
-## 1 0.4790303 0.4661406 5.085155e-05 4.409314e-05 0.01709869 0.01836240
-## 2 0.4735495 0.4708171 3.668979e-05 3.159909e-05 0.01447486 0.01559732
-## 3 0.4895002 0.4558982 4.518089e-05 3.937602e-05 0.01615821 0.01730831
-## 4 0.4783304 0.4664144 2.539790e-05 2.675322e-05 0.01331881 0.01297706
-## 5 0.4740080 0.4703301 3.108062e-05 2.749633e-05 0.01350251 0.01435562
-## 6 0.4831900 0.4617019 2.682457e-05 2.582269e-05 0.01308513 0.01333655
-##        dif.PRI      dif.PAN    MinPRI    MaxPRI    MinPAN    MaxPAN capturaPRI
-## 1  0.003168127 -0.001987670 0.4606679 0.4973926 0.4490419 0.4832392       TRUE
-## 2 -0.002312635  0.002688914 0.4579522 0.4891468 0.4563423 0.4852920       TRUE
-## 3  0.013638119 -0.012229997 0.4721919 0.5068085 0.4397400 0.4720564       TRUE
-## 4  0.002468253 -0.001713807 0.4653533 0.4913074 0.4530956 0.4797332       TRUE
-## 5 -0.001854166  0.002201886 0.4596523 0.4883636 0.4568276 0.4838326       TRUE
-## 6  0.007327893 -0.006426319 0.4698535 0.4965266 0.4486168 0.4747870       TRUE
-##   capturaPAN no.Traslape
-## 1       TRUE       FALSE
-## 2       TRUE       FALSE
-## 3       TRUE       FALSE
-## 4       TRUE       FALSE
-## 5       TRUE       FALSE
-## 6       TRUE       FALSE</code></pre>
-<pre class="r"><code>resumenSimulacion(simDistrito, z) %&gt;% 
-  resumenCaptura()</code></pre>
-<pre><code>##   PRI.capturado PAN.capturado no.Traslapado
-## 1           100           100             0</code></pre>
+# Prueba la función
+hora.inicio &lt;- &quot;2021-06-06 18:00:00&quot;
+hora.final &lt;- &quot;2021-06-07 00:00:00&quot;
+
+rand.date(hora.inicio, hora.final, 2)</code></pre>
+<pre><code>## [1] &quot;2021-06-06 20:17:00 MST&quot; &quot;2021-06-06 21:54:00 MST&quot;</code></pre>
 </div>
+<div id="lee-muestra-y-asigna-hora-de-llegada" class="section level3">
+<h3>Lee muestra y asigna hora de llegada</h3>
+<pre class="r"><code>muestra.fija &lt;- read.csv(&quot;muestra.csv&quot;)
+hora &lt;- rand.date(hora.inicio, hora.final, length(muestra.fija[,1]))
+
+muestra.fija &lt;- muestra.fija %&gt;%
+  cbind(hora) %&gt;%
+  rename(casilla = x) %&gt;%
+  select(casilla, hora)</code></pre>
+</div>
+<div id="simula-en-el-día" class="section level3">
+<h3>Simula en el día</h3>
+<pre class="r"><code>cortes &lt;- c(&quot;2021-06-06 19:00:00&quot;, &quot;2021-06-06 20:00:00&quot;, 
+            &quot;2021-06-06 21:00:00&quot;, &quot;2021-06-06 22:00:00&quot;,
+            &quot;2021-06-06 23:00:00&quot;, &quot;2021-06-07 00:00:00&quot;)
+df &lt;- gobernador2015 %&gt;%
+    rename(estrato = distrito_tipo) 
+
+avance &lt;- c()
+resumen &lt;- data.frame()
+
+for(i in 1: length(cortes)){
+  df.muestra0 &lt;- muestra.fija %&gt;%
+    filter(hora &lt;= cortes[i]) %&gt;%
+    select(casilla)
+  muestra0 &lt;- df.muestra0$casilla
+
+  df0 &lt;- df %&gt;%
+    filter(seccion_casilla %in% muestra0) 
+
+  resumen &lt;- simEstratificadoMuestraFija(
+    df0, df.distritosTipo, muestra0) %&gt;%
+    rbind(resumen)
+  avance[i] = length(muestra0)/length(muestra.fija$casilla)
+}
+
+resumen &lt;- cbind(cortes, resumen, avance) %&gt;%
+  select(-c(varPAN, varPRI))</code></pre>
+</div>
+<div id="gráfica" class="section level3">
+<h3>Gráfica</h3>
+<pre class="r"><code>data &lt;- resumen 
+
+fig &lt;- plot_ly(data, 
+               x = ~cortes, y = ~estPRI, type = &#39;scatter&#39;, name = &#39;PRI&#39;,
+               error_y = ~list(array = deltaPRI, color = &#39;#000000&#39;)) %&gt;%
+  add_trace(x = ~cortes, y = ~estPAN, type = &#39;scatter&#39;, name = &#39;PAN&#39;,
+               error_y = ~list(array = deltaPAN, color = &#39;#000000&#39;))
+fig</code></pre>
+<div id="htmlwidget-b2804cb4d2181b8a11c0" style="width:672px;height:480px;" class="plotly html-widget"></div>
+<script type="application/json" data-for="htmlwidget-b2804cb4d2181b8a11c0">{"x":{"visdat":{"3d0b62b7c095":["function () ","plotlyVisDat"]},"cur_data":"3d0b62b7c095","attrs":{"3d0b62b7c095":{"x":{},"y":{},"error_y":{},"name":"PRI","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"},"3d0b62b7c095.1":{"x":{},"y":{},"error_y":{},"name":"PAN","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter","inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"xaxis":{"domain":[0,1],"automargin":true,"title":"cortes","type":"category","categoryorder":"array","categoryarray":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"]},"yaxis":{"domain":[0,1],"automargin":true,"title":"estPRI"},"hovermode":"closest","showlegend":true},"source":"A","config":{"showSendToCloud":false},"data":[{"x":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"],"y":[0.476783663676862,0.478474541006817,0.480516561506496,0.483534007756604,0.473194808462397,0.46361588844338],"error_y":{"color":"#000000","array":[0.0129723747004616,0.0146734195064077,0.0155340609208689,0.0237076602518698,0.0243546106887556,0.0201932405467921]},"name":"PRI","type":"scatter","mode":"markers","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"error_x":{"color":"rgba(31,119,180,1)"},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"],"y":[0.403306703073747,0.406235234626722,0.402309676209468,0.400675116977311,0.406916121917812,0.421078419267208],"error_y":{"color":"#000000","array":[0.0125204139397928,0.0149315026838056,0.0158293910991897,0.0188151766635661,0.0189960194598836,0.0167535600490731]},"name":"PAN","type":"scatter","mode":"markers","marker":{"color":"rgba(255,127,14,1)","line":{"color":"rgba(255,127,14,1)"}},"error_x":{"color":"rgba(255,127,14,1)"},"line":{"color":"rgba(255,127,14,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+<pre class="r"><code>df.muestra0 &lt;- muestra.fija %&gt;%
+  select(casilla)
+muestra0 &lt;- df.muestra0$casilla
+
+df0 &lt;- df %&gt;%
+  filter(seccion_casilla %in% muestra0) 
+
+simEstratificadoMuestraFija(df0, df.distritosTipo, muestra0)</code></pre>
+<pre><code>##      estPRI    estPAN       varPRI       varPAN   deltaPAN   deltaPRI
+## 1 0.4767837 0.4033067 2.537958e-05 2.364193e-05 0.01252041 0.01297237</code></pre>
 </div>
 
 

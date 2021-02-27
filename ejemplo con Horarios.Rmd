@@ -1,0 +1,160 @@
+---
+title: "Conteo rapido muestra estratificada proporcional"
+author: "Equipo 1"
+date: "2/5/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+library(readxl)
+library(dplyr)
+library(janitor)
+library(magrittr)
+library(plotly)
+```
+
+```{r}
+rm(list = ls())
+`%notin%` = function(x,y) !(x %in% y)
+source("funciones/muestra.R")
+source("funciones/simEstratificadoMuestraFija.R")
+```
+
+### Lectura de datos
+
+```{r}
+source("funciones/lecturaDatos.R")
+gobernador2015 <- lecturaDatos() 
+```
+
+### Resultado real
+
+```{r}
+gobernador2015 %>%
+  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
+            PAN = sum(pan) / sum(votacion_total_emitida)) %>%
+  select(PRI, PAN) -> resultadoReal
+
+resultadoReal
+```
+
+### Tamaño de muestra
+
+```{r}
+N <- length(gobernador2015$seccion_casilla)  # total de casillas
+n <- muestra(N)                              # Número de secciones en la muestra
+
+z <- 2.575
+#z <- qnorm(1-0.01/2)
+#z <- 1.96
+```
+
+### Resumen por distrito
+
+```{r}
+df.distritosTipo <- gobernador2015 %>%
+  group_by(distrito_tipo) %>%
+  summarise(LN = sum(lista_nominal),
+            Nh = n(),           # Casillas por distrito
+            p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
+  mutate(nh = round(n * p),
+         nh12 = round(N * 0.12 * p),
+         nh15 = round(N * 0.15 * p),
+         nh25 = round(N * 0.25 * p)) %>%
+  mutate(nh = if_else(nh == 1, 2, nh),
+         nh12 = if_else(nh12 == 1, 2, nh12),
+         nh15 = if_else(nh15 == 1, 2, nh15),
+         nh25 = if_else(nh25 == 1, 2, nh25)) %>%
+  arrange(distrito_tipo) %>%
+  rename(estrato = distrito_tipo)
+```
+
+### Función hora aleatoria (uniforme)
+
+```{r}
+rand.date = function(start.time, end.time, size){
+  times <- seq(from=as.POSIXct(start.time), 
+               to=as.POSIXct(end.time), by="min")  
+  U <- runif(size, 1, length(times))  
+  #weibull.times <- (1/vlambda) *(-log(1-U))^(1/valpha)
+  date=times[U] 
+  return(date)
+}
+
+# Prueba la función
+hora.inicio <- "2021-06-06 18:00:00"
+hora.final <- "2021-06-07 00:00:00"
+
+rand.date(hora.inicio, hora.final, 2)
+```
+
+### Lee muestra y asigna hora de llegada
+
+```{r}
+muestra.fija <- read.csv("muestra.csv")
+hora <- rand.date(hora.inicio, hora.final, length(muestra.fija[,1]))
+
+muestra.fija <- muestra.fija %>%
+  cbind(hora) %>%
+  rename(casilla = x) %>%
+  select(casilla, hora)
+```
+
+### Simula en el día
+
+```{r, warning=FALSE}
+cortes <- c("2021-06-06 19:00:00", "2021-06-06 20:00:00", 
+            "2021-06-06 21:00:00", "2021-06-06 22:00:00",
+            "2021-06-06 23:00:00", "2021-06-07 00:00:00")
+df <- gobernador2015 %>%
+    rename(estrato = distrito_tipo) 
+
+avance <- c()
+resumen <- data.frame()
+
+for(i in 1: length(cortes)){
+  df.muestra0 <- muestra.fija %>%
+    filter(hora <= cortes[i]) %>%
+    select(casilla)
+  muestra0 <- df.muestra0$casilla
+
+  df0 <- df %>%
+    filter(seccion_casilla %in% muestra0) 
+
+  resumen <- simEstratificadoMuestraFija(
+    df0, df.distritosTipo, muestra0) %>%
+    rbind(resumen)
+  avance[i] = length(muestra0)/length(muestra.fija$casilla)
+}
+
+resumen <- cbind(cortes, resumen, avance) %>%
+  select(-c(varPAN, varPRI))
+```
+
+### Gráfica
+
+```{r, warning=FALSE}
+data <- resumen 
+
+fig <- plot_ly(data, 
+               x = ~cortes, y = ~estPRI, type = 'scatter', name = 'PRI',
+               error_y = ~list(array = deltaPRI, color = '#000000')) %>%
+  add_trace(x = ~cortes, y = ~estPAN, type = 'scatter', name = 'PAN',
+               error_y = ~list(array = deltaPAN, color = '#000000'))
+fig
+```
+
+```{r, warning=FALSE}
+df.muestra0 <- muestra.fija %>%
+  select(casilla)
+muestra0 <- df.muestra0$casilla
+
+df0 <- df %>%
+  filter(seccion_casilla %in% muestra0) 
+
+simEstratificadoMuestraFija(df0, df.distritosTipo, muestra0)
+```
+
