@@ -2367,7 +2367,7 @@ hora.inicio &lt;- &quot;2021-06-06 18:00:00&quot;
 hora.final &lt;- &quot;2021-06-07 00:00:00&quot;
 
 rand.date(hora.inicio, hora.final, 2)</code></pre>
-<pre><code>## [1] &quot;2021-06-06 22:05:00 MST&quot; &quot;2021-06-06 19:17:00 MST&quot;</code></pre>
+<pre><code>## [1] &quot;2021-06-06 19:01:00 MST&quot; &quot;2021-06-06 18:38:00 MST&quot;</code></pre>
 </div>
 <div id="lee-muestra-y-asigna-hora-de-llegada" class="section level3">
 <h3>Lee muestra y asigna hora de llegada</h3>
@@ -2381,9 +2381,9 @@ muestra.fija &lt;- muestra.fija %&gt;%
 
 summary(muestra.fija$hora)</code></pre>
 <pre><code>##                  Min.               1st Qu.                Median 
-## &quot;2021-06-06 18:01:00&quot; &quot;2021-06-06 19:35:00&quot; &quot;2021-06-06 21:09:00&quot; 
+## &quot;2021-06-06 18:01:00&quot; &quot;2021-06-06 19:48:00&quot; &quot;2021-06-06 21:27:00&quot; 
 ##                  Mean               3rd Qu.                  Max. 
-## &quot;2021-06-06 21:01:53&quot; &quot;2021-06-06 22:22:00&quot; &quot;2021-06-06 23:59:00&quot;</code></pre>
+## &quot;2021-06-06 21:15:42&quot; &quot;2021-06-06 22:43:00&quot; &quot;2021-06-06 23:59:00&quot;</code></pre>
 </div>
 <div id="simula-en-el-día" class="section level3">
 <h3>Simula en el día</h3>
@@ -2427,23 +2427,23 @@ fig &lt;- plot_ly(data,
   add_trace(x = ~cortes, y = ~estPAN, type = &#39;scatter&#39;, name = &#39;PAN&#39;,
                error_y = ~list(array = deltaPAN, color = &#39;#000000&#39;))
 fig</code></pre>
-<div id="htmlwidget-d440dfe1be0fe0006176" style="width:672px;height:480px;" class="plotly html-widget"></div>
-<script type="application/json" data-for="htmlwidget-d440dfe1be0fe0006176">{"x":{"visdat":{"1d7d5e39a506":["function () ","plotlyVisDat"]},"cur_data":"1d7d5e39a506","attrs":{"1d7d5e39a506":{"x":{},"y":{},"error_y":{},"name":"PRI","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"},"1d7d5e39a506.1":{"x":{},"y":{},"error_y":{},"name":"PAN","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter","inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"xaxis":{"domain":[0,1],"automargin":true,"title":"cortes","type":"category","categoryorder":"array","categoryarray":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"]},"yaxis":{"domain":[0,1],"automargin":true,"title":"estPRI"},"hovermode":"closest","showlegend":true},"source":"A","config":{"showSendToCloud":false},"data":[{"x":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"],"y":[0.464699846906705,0.465168897224419,0.468708859836409,0.481115021412681,0.479600608871258,0.476783663676862],"error_y":{"color":"#000000","array":[0.0214292877555022,0.0160845841540166,0.0131040745818596,0.0165829325858797,0.0139867340278047,0.0129723747004616]},"name":"PRI","type":"scatter","mode":"markers","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"error_x":{"color":"rgba(31,119,180,1)"},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"],"y":[0.408626794436438,0.410168733596102,0.41151788339458,0.403106591833269,0.402744823141629,0.403306703073747],"error_y":{"color":"#000000","array":[0.0219534424361871,0.0196663857613605,0.0145571262810903,0.0155742701514213,0.013335945854209,0.0125204139397928]},"name":"PAN","type":"scatter","mode":"markers","marker":{"color":"rgba(255,127,14,1)","line":{"color":"rgba(255,127,14,1)"}},"error_x":{"color":"rgba(255,127,14,1)"},"line":{"color":"rgba(255,127,14,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-2866345d51d44cf9b3ab" style="width:672px;height:480px;" class="plotly html-widget"></div>
+<script type="application/json" data-for="htmlwidget-2866345d51d44cf9b3ab">{"x":{"visdat":{"1e624a900e98":["function () ","plotlyVisDat"]},"cur_data":"1e624a900e98","attrs":{"1e624a900e98":{"x":{},"y":{},"error_y":{},"name":"PRI","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"},"1e624a900e98.1":{"x":{},"y":{},"error_y":{},"name":"PAN","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter","inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"xaxis":{"domain":[0,1],"automargin":true,"title":"cortes","type":"category","categoryorder":"array","categoryarray":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"]},"yaxis":{"domain":[0,1],"automargin":true,"title":"estPRI"},"hovermode":"closest","showlegend":true},"source":"A","config":{"showSendToCloud":false},"data":[{"x":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"],"y":[0.469259057441272,0.465188201360748,0.469268254940227,0.476368347149644,0.471927741577557,0.476783663676862],"error_y":{"color":"#000000","array":[0.0381723173288271,0.0200278021952198,0.0146551897079755,0.0143159773985337,0.0122402389436385,0.0129723747004616]},"name":"PRI","type":"scatter","mode":"markers","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"error_x":{"color":"rgba(31,119,180,1)"},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"],"y":[0.406086168562692,0.413549245232962,0.405015207149186,0.403368565109627,0.406928228492345,0.403306703073747],"error_y":{"color":"#000000","array":[0.0286501973662484,0.0186697187104506,0.0157172008630983,0.0144807618582847,0.0129912295156514,0.0125204139397928]},"name":"PAN","type":"scatter","mode":"markers","marker":{"color":"rgba(255,127,14,1)","line":{"color":"rgba(255,127,14,1)"}},"error_x":{"color":"rgba(255,127,14,1)"},"line":{"color":"rgba(255,127,14,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
 <pre class="r"><code>resumen</code></pre>
-<pre><code>##                cortes    estPRI    estPAN   deltaPAN   deltaPRI prueba
-## 1 2021-06-06 19:00:00 0.4646998 0.4086268 0.02195344 0.02142929      0
-## 2 2021-06-06 20:00:00 0.4651689 0.4101687 0.01966639 0.01608458      0
-## 3 2021-06-06 21:00:00 0.4687089 0.4115179 0.01455713 0.01310407      0
-## 4 2021-06-06 22:00:00 0.4811150 0.4031066 0.01557427 0.01658293      0
-## 5 2021-06-06 23:00:00 0.4796006 0.4027448 0.01333595 0.01398673      0
-## 6 2021-06-07 00:00:00 0.4767837 0.4033067 0.01252041 0.01297237      0
-##   casillas.capt    avance
-## 1            51 0.1469741
-## 2           112 0.3227666
-## 3           164 0.4726225
-## 4           238 0.6858790
-## 5           298 0.8587896
-## 6           347 1.0000000</code></pre>
+<pre><code>##                cortes    estPRI    estPAN   deltaPAN   deltaPRI        PAN
+## 1 2021-06-06 19:00:00 0.4692591 0.4060862 0.02865020 0.03817232 0.02865020
+## 2 2021-06-06 20:00:00 0.4651882 0.4135492 0.01866972 0.02002780 0.01866972
+## 3 2021-06-06 21:00:00 0.4692683 0.4050152 0.01571720 0.01465519 0.01571720
+## 4 2021-06-06 22:00:00 0.4763683 0.4033686 0.01448076 0.01431598 0.01448076
+## 5 2021-06-06 23:00:00 0.4719277 0.4069282 0.01299123 0.01224024 0.01299123
+## 6 2021-06-07 00:00:00 0.4767837 0.4033067 0.01252041 0.01297237 0.01252041
+##          PRI casillas.capt    avance
+## 1 0.03817232            47 0.1354467
+## 2 0.02002780            96 0.2766571
+## 3 0.01465519           142 0.4092219
+## 4 0.01431598           209 0.6023055
+## 5 0.01224024           279 0.8040346
+## 6 0.01297237           347 1.0000000</code></pre>
 <pre class="r"><code>otros &lt;- resultadoOtrosPartidos(df0, df.distritosTipo, muestra0) %&gt;%
   t() %&gt;%
   as.data.frame() %&gt;%
@@ -2461,8 +2461,8 @@ fig &lt;- plot_ly(data,
 )
 
 fig</code></pre>
-<div id="htmlwidget-d05aab15b2dec914f48b" style="width:672px;height:480px;" class="plotly html-widget"></div>
-<script type="application/json" data-for="htmlwidget-d05aab15b2dec914f48b">{"x":{"visdat":{"1d7d18395b82":["function () ","plotlyVisDat"]},"cur_data":"1d7d18395b82","attrs":{"1d7d18395b82":{"x":{},"y":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"bar"}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"xaxis":{"domain":[0,1],"automargin":true,"title":"partido","type":"category","categoryorder":"array","categoryarray":["estHUMANISTA","estMORENA","estnoREG","estNULOS","estPAN","estPES","estPRD","estPRI","estPT","estPVEM"]},"yaxis":{"domain":[0,1],"automargin":true,"title":"p"},"hovermode":"closest","showlegend":false},"source":"A","config":{"showSendToCloud":false},"data":[{"x":["estPRI","estPAN","estPRD","estPVEM","estPT","estMORENA","estHUMANISTA","estPES","estnoREG","estNULOS"],"y":[0.476783663676862,0.403306703073747,0.0376062313196186,0.0117391705540219,0.0137999550620712,0.028007182116129,0.00693371737175465,0.00949049219991007,0.00066122753173822,0.023410827648169],"type":"bar","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"error_y":{"color":"rgba(31,119,180,1)"},"error_x":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-bb17674db07366e72d74" style="width:672px;height:480px;" class="plotly html-widget"></div>
+<script type="application/json" data-for="htmlwidget-bb17674db07366e72d74">{"x":{"visdat":{"1e6224e9886f":["function () ","plotlyVisDat"]},"cur_data":"1e6224e9886f","attrs":{"1e6224e9886f":{"x":{},"y":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"bar"}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"xaxis":{"domain":[0,1],"automargin":true,"title":"partido","type":"category","categoryorder":"array","categoryarray":["estHUMANISTA","estMORENA","estnoREG","estNULOS","estPAN","estPES","estPRD","estPRI","estPT","estPVEM"]},"yaxis":{"domain":[0,1],"automargin":true,"title":"p"},"hovermode":"closest","showlegend":false},"source":"A","config":{"showSendToCloud":false},"data":[{"x":["estPRI","estPAN","estPRD","estPVEM","estPT","estMORENA","estHUMANISTA","estPES","estnoREG","estNULOS"],"y":[0.476783663676862,0.403306703073747,0.0376062313196186,0.0117391705540219,0.0137999550620712,0.028007182116129,0.00693371737175465,0.00949049219991007,0.00066122753173822,0.023410827648169],"type":"bar","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"error_y":{"color":"rgba(31,119,180,1)"},"error_x":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
 </div>
 
 

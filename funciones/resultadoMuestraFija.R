@@ -52,7 +52,6 @@ calculaDelta <- function(df, df.estratos, muestra, partido, estPART, estTotal){
 
 
 resultadoMuestraFija <- function(df, df.estratos, muestra){
-  
   #df <- df0  # para pruebas
   #df.estratos <- df.distritosTipo # para pruebas
   #muestra<-muestra0 # para pruebas
@@ -86,7 +85,9 @@ resultadoMuestraFija <- function(df, df.estratos, muestra){
   estPAN = df.temporal$Wh %*% df.temporal$PAN / estTotal %>% c()
   estPRI = df.temporal$Wh %*% df.temporal$PRI / estTotal %>% c()
   
-  prueba <- calculaDelta(df, df.estratos, muestra, df$pan, estPAN, estTotal)
+  pruebaPAN <- calculaDelta(df, df.estratos, muestra, df$pan, estPAN, estTotal)
+  pruebaPRI <- calculaDelta(df, df.estratos, muestra, df$total_coalicion, estPRI, estTotal)
+
   df2 <- df %>%
     filter(seccion_casilla %in% muestra) 
   
@@ -130,9 +131,9 @@ resultadoMuestraFija <- function(df, df.estratos, muestra){
   
   resultado <- cbind(estPRI, estPAN, 
                      #varPRI, varPAN, 
-                     deltaPAN, deltaPRI, prueba)
+                     deltaPAN, deltaPRI, pruebaPAN, pruebaPRI)
   colnames(resultado) <- c("estPRI", "estPAN", 
-                           "deltaPAN", "deltaPRI", "prueba")
+                           "deltaPAN", "deltaPRI", "PAN", "PRI")
   
   resultado <- resultado %>%
     as.data.frame()
