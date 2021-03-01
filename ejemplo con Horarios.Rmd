@@ -20,7 +20,7 @@ library(plotly)
 rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source("funciones/muestra.R")
-source("funciones/simEstratificadoMuestraFija.R")
+source("funciones/resultadoOtrosPartidos.R")
 ```
 
 ### Lectura de datos
@@ -60,14 +60,8 @@ df.distritosTipo <- gobernador2015 %>%
   summarise(LN = sum(lista_nominal),
             Nh = n(),           # Casillas por distrito
             p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
-  mutate(nh = round(n * p),
-         nh12 = round(N * 0.12 * p),
-         nh15 = round(N * 0.15 * p),
-         nh25 = round(N * 0.25 * p)) %>%
-  mutate(nh = if_else(nh == 1, 2, nh),
-         nh12 = if_else(nh12 == 1, 2, nh12),
-         nh15 = if_else(nh15 == 1, 2, nh15),
-         nh25 = if_else(nh25 == 1, 2, nh25)) %>%
+  mutate(nh = round(n * p)) %>%
+  mutate(nh = if_else(nh == 1, 2, nh)) %>%
   arrange(distrito_tipo) %>%
   rename(estrato = distrito_tipo)
 ```
@@ -101,6 +95,8 @@ muestra.fija <- muestra.fija %>%
   cbind(hora) %>%
   rename(casilla = x) %>%
   select(casilla, hora)
+
+summary(muestra.fija$hora)
 ```
 
 ### Simula en el día
@@ -112,9 +108,11 @@ cortes <- c("2021-06-06 19:00:00", "2021-06-06 20:00:00",
 df <- gobernador2015 %>%
     rename(estrato = distrito_tipo) 
 
-avance <- c()
-resumen <- data.frame()
+source("funciones/resultadoMuestraFija.R")
 
+casillas.capt <- c()
+resumen <- data.frame()
+i<-2
 for(i in 1: length(cortes)){
   df.muestra0 <- muestra.fija %>%
     filter(hora <= cortes[i]) %>%
@@ -123,18 +121,20 @@ for(i in 1: length(cortes)){
 
   df0 <- df %>%
     filter(seccion_casilla %in% muestra0) 
+  
+  temp <- resultadoMuestraFija(df0, df.distritosTipo, muestra0)
 
-  resumen <- simEstratificadoMuestraFija(
-    df0, df.distritosTipo, muestra0) %>%
-    rbind(resumen)
-  avance[i] = length(muestra0)/length(muestra.fija$casilla)
+  resumen <- rbind(resumen, temp)
+  casillas.capt[i] = length(muestra0)
 }
 
-resumen <- cbind(cortes, resumen, avance) %>%
-  select(-c(varPAN, varPRI))
+resumen <- cbind(cortes, resumen, 
+                 casillas.capt,
+                 avance= casillas.capt/length(muestra.fija$casilla))
 ```
 
-### Gráfica
+
+### Gráfica  
 
 ```{r, warning=FALSE}
 data <- resumen 
@@ -147,14 +147,29 @@ fig <- plot_ly(data,
 fig
 ```
 
-```{r, warning=FALSE}
-df.muestra0 <- muestra.fija %>%
-  select(casilla)
-muestra0 <- df.muestra0$casilla
-
-df0 <- df %>%
-  filter(seccion_casilla %in% muestra0) 
-
-simEstratificadoMuestraFija(df0, df.distritosTipo, muestra0)
+```{r}
+resumen
 ```
+
+```{r}
+otros <- resultadoOtrosPartidos(df0, df.distritosTipo, muestra0) %>%
+  t() %>%
+  as.data.frame() %>%
+  rename(p = V1) %>%
+  arrange()
+
+data <- data.frame(partido = row.names(otros), p = otros$p)
+
+#data$partido <- factor(data$partido,levels = unique(data$partido)[order(data$p, decreasing = TRUE)])
+
+fig <- plot_ly(data,
+               x = ~partido, 
+               y = ~p,
+               type = "bar"
+)
+
+fig
+```
+
+
 

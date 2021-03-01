@@ -2311,7 +2311,7 @@ summary {
 <pre class="r"><code>rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source(&quot;funciones/muestra.R&quot;)
-source(&quot;funciones/simEstratificadoMuestraFija.R&quot;)</code></pre>
+source(&quot;funciones/resultadoOtrosPartidos.R&quot;)</code></pre>
 <div id="lectura-de-datos" class="section level3">
 <h3>Lectura de datos</h3>
 <pre class="r"><code>source(&quot;funciones/lecturaDatos.R&quot;)
@@ -2346,14 +2346,8 @@ z &lt;- 2.575
   summarise(LN = sum(lista_nominal),
             Nh = n(),           # Casillas por distrito
             p = LN/sum(gobernador2015$lista_nominal)) %&gt;%   # Proporción
-  mutate(nh = round(n * p),
-         nh12 = round(N * 0.12 * p),
-         nh15 = round(N * 0.15 * p),
-         nh25 = round(N * 0.25 * p)) %&gt;%
-  mutate(nh = if_else(nh == 1, 2, nh),
-         nh12 = if_else(nh12 == 1, 2, nh12),
-         nh15 = if_else(nh15 == 1, 2, nh15),
-         nh25 = if_else(nh25 == 1, 2, nh25)) %&gt;%
+  mutate(nh = round(n * p)) %&gt;%
+  mutate(nh = if_else(nh == 1, 2, nh)) %&gt;%
   arrange(distrito_tipo) %&gt;%
   rename(estrato = distrito_tipo)</code></pre>
 </div>
@@ -2373,7 +2367,7 @@ hora.inicio &lt;- &quot;2021-06-06 18:00:00&quot;
 hora.final &lt;- &quot;2021-06-07 00:00:00&quot;
 
 rand.date(hora.inicio, hora.final, 2)</code></pre>
-<pre><code>## [1] &quot;2021-06-06 20:17:00 MST&quot; &quot;2021-06-06 21:54:00 MST&quot;</code></pre>
+<pre><code>## [1] &quot;2021-06-06 22:05:00 MST&quot; &quot;2021-06-06 19:17:00 MST&quot;</code></pre>
 </div>
 <div id="lee-muestra-y-asigna-hora-de-llegada" class="section level3">
 <h3>Lee muestra y asigna hora de llegada</h3>
@@ -2383,7 +2377,13 @@ hora &lt;- rand.date(hora.inicio, hora.final, length(muestra.fija[,1]))
 muestra.fija &lt;- muestra.fija %&gt;%
   cbind(hora) %&gt;%
   rename(casilla = x) %&gt;%
-  select(casilla, hora)</code></pre>
+  select(casilla, hora)
+
+summary(muestra.fija$hora)</code></pre>
+<pre><code>##                  Min.               1st Qu.                Median 
+## &quot;2021-06-06 18:01:00&quot; &quot;2021-06-06 19:35:00&quot; &quot;2021-06-06 21:09:00&quot; 
+##                  Mean               3rd Qu.                  Max. 
+## &quot;2021-06-06 21:01:53&quot; &quot;2021-06-06 22:22:00&quot; &quot;2021-06-06 23:59:00&quot;</code></pre>
 </div>
 <div id="simula-en-el-día" class="section level3">
 <h3>Simula en el día</h3>
@@ -2393,9 +2393,11 @@ muestra.fija &lt;- muestra.fija %&gt;%
 df &lt;- gobernador2015 %&gt;%
     rename(estrato = distrito_tipo) 
 
-avance &lt;- c()
-resumen &lt;- data.frame()
+source(&quot;funciones/resultadoMuestraFija.R&quot;)
 
+casillas.capt &lt;- c()
+resumen &lt;- data.frame()
+i&lt;-2
 for(i in 1: length(cortes)){
   df.muestra0 &lt;- muestra.fija %&gt;%
     filter(hora &lt;= cortes[i]) %&gt;%
@@ -2404,15 +2406,16 @@ for(i in 1: length(cortes)){
 
   df0 &lt;- df %&gt;%
     filter(seccion_casilla %in% muestra0) 
+  
+  temp &lt;- resultadoMuestraFija(df0, df.distritosTipo, muestra0)
 
-  resumen &lt;- simEstratificadoMuestraFija(
-    df0, df.distritosTipo, muestra0) %&gt;%
-    rbind(resumen)
-  avance[i] = length(muestra0)/length(muestra.fija$casilla)
+  resumen &lt;- rbind(resumen, temp)
+  casillas.capt[i] = length(muestra0)
 }
 
-resumen &lt;- cbind(cortes, resumen, avance) %&gt;%
-  select(-c(varPAN, varPRI))</code></pre>
+resumen &lt;- cbind(cortes, resumen, 
+                 casillas.capt,
+                 avance= casillas.capt/length(muestra.fija$casilla))</code></pre>
 </div>
 <div id="gráfica" class="section level3">
 <h3>Gráfica</h3>
@@ -2424,18 +2427,42 @@ fig &lt;- plot_ly(data,
   add_trace(x = ~cortes, y = ~estPAN, type = &#39;scatter&#39;, name = &#39;PAN&#39;,
                error_y = ~list(array = deltaPAN, color = &#39;#000000&#39;))
 fig</code></pre>
-<div id="htmlwidget-b2804cb4d2181b8a11c0" style="width:672px;height:480px;" class="plotly html-widget"></div>
-<script type="application/json" data-for="htmlwidget-b2804cb4d2181b8a11c0">{"x":{"visdat":{"3d0b62b7c095":["function () ","plotlyVisDat"]},"cur_data":"3d0b62b7c095","attrs":{"3d0b62b7c095":{"x":{},"y":{},"error_y":{},"name":"PRI","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"},"3d0b62b7c095.1":{"x":{},"y":{},"error_y":{},"name":"PAN","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter","inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"xaxis":{"domain":[0,1],"automargin":true,"title":"cortes","type":"category","categoryorder":"array","categoryarray":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"]},"yaxis":{"domain":[0,1],"automargin":true,"title":"estPRI"},"hovermode":"closest","showlegend":true},"source":"A","config":{"showSendToCloud":false},"data":[{"x":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"],"y":[0.476783663676862,0.478474541006817,0.480516561506496,0.483534007756604,0.473194808462397,0.46361588844338],"error_y":{"color":"#000000","array":[0.0129723747004616,0.0146734195064077,0.0155340609208689,0.0237076602518698,0.0243546106887556,0.0201932405467921]},"name":"PRI","type":"scatter","mode":"markers","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"error_x":{"color":"rgba(31,119,180,1)"},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"],"y":[0.403306703073747,0.406235234626722,0.402309676209468,0.400675116977311,0.406916121917812,0.421078419267208],"error_y":{"color":"#000000","array":[0.0125204139397928,0.0149315026838056,0.0158293910991897,0.0188151766635661,0.0189960194598836,0.0167535600490731]},"name":"PAN","type":"scatter","mode":"markers","marker":{"color":"rgba(255,127,14,1)","line":{"color":"rgba(255,127,14,1)"}},"error_x":{"color":"rgba(255,127,14,1)"},"line":{"color":"rgba(255,127,14,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
-<pre class="r"><code>df.muestra0 &lt;- muestra.fija %&gt;%
-  select(casilla)
-muestra0 &lt;- df.muestra0$casilla
+<div id="htmlwidget-d440dfe1be0fe0006176" style="width:672px;height:480px;" class="plotly html-widget"></div>
+<script type="application/json" data-for="htmlwidget-d440dfe1be0fe0006176">{"x":{"visdat":{"1d7d5e39a506":["function () ","plotlyVisDat"]},"cur_data":"1d7d5e39a506","attrs":{"1d7d5e39a506":{"x":{},"y":{},"error_y":{},"name":"PRI","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"},"1d7d5e39a506.1":{"x":{},"y":{},"error_y":{},"name":"PAN","alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter","inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"xaxis":{"domain":[0,1],"automargin":true,"title":"cortes","type":"category","categoryorder":"array","categoryarray":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"]},"yaxis":{"domain":[0,1],"automargin":true,"title":"estPRI"},"hovermode":"closest","showlegend":true},"source":"A","config":{"showSendToCloud":false},"data":[{"x":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"],"y":[0.464699846906705,0.465168897224419,0.468708859836409,0.481115021412681,0.479600608871258,0.476783663676862],"error_y":{"color":"#000000","array":[0.0214292877555022,0.0160845841540166,0.0131040745818596,0.0165829325858797,0.0139867340278047,0.0129723747004616]},"name":"PRI","type":"scatter","mode":"markers","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"error_x":{"color":"rgba(31,119,180,1)"},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":["2021-06-06 19:00:00","2021-06-06 20:00:00","2021-06-06 21:00:00","2021-06-06 22:00:00","2021-06-06 23:00:00","2021-06-07 00:00:00"],"y":[0.408626794436438,0.410168733596102,0.41151788339458,0.403106591833269,0.402744823141629,0.403306703073747],"error_y":{"color":"#000000","array":[0.0219534424361871,0.0196663857613605,0.0145571262810903,0.0155742701514213,0.013335945854209,0.0125204139397928]},"name":"PAN","type":"scatter","mode":"markers","marker":{"color":"rgba(255,127,14,1)","line":{"color":"rgba(255,127,14,1)"}},"error_x":{"color":"rgba(255,127,14,1)"},"line":{"color":"rgba(255,127,14,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+<pre class="r"><code>resumen</code></pre>
+<pre><code>##                cortes    estPRI    estPAN   deltaPAN   deltaPRI prueba
+## 1 2021-06-06 19:00:00 0.4646998 0.4086268 0.02195344 0.02142929      0
+## 2 2021-06-06 20:00:00 0.4651689 0.4101687 0.01966639 0.01608458      0
+## 3 2021-06-06 21:00:00 0.4687089 0.4115179 0.01455713 0.01310407      0
+## 4 2021-06-06 22:00:00 0.4811150 0.4031066 0.01557427 0.01658293      0
+## 5 2021-06-06 23:00:00 0.4796006 0.4027448 0.01333595 0.01398673      0
+## 6 2021-06-07 00:00:00 0.4767837 0.4033067 0.01252041 0.01297237      0
+##   casillas.capt    avance
+## 1            51 0.1469741
+## 2           112 0.3227666
+## 3           164 0.4726225
+## 4           238 0.6858790
+## 5           298 0.8587896
+## 6           347 1.0000000</code></pre>
+<pre class="r"><code>otros &lt;- resultadoOtrosPartidos(df0, df.distritosTipo, muestra0) %&gt;%
+  t() %&gt;%
+  as.data.frame() %&gt;%
+  rename(p = V1) %&gt;%
+  arrange()
 
-df0 &lt;- df %&gt;%
-  filter(seccion_casilla %in% muestra0) 
+data &lt;- data.frame(partido = row.names(otros), p = otros$p)
 
-simEstratificadoMuestraFija(df0, df.distritosTipo, muestra0)</code></pre>
-<pre><code>##      estPRI    estPAN       varPRI       varPAN   deltaPAN   deltaPRI
-## 1 0.4767837 0.4033067 2.537958e-05 2.364193e-05 0.01252041 0.01297237</code></pre>
+#data$partido &lt;- factor(data$partido,levels = unique(data$partido)[order(data$p, decreasing = TRUE)])
+
+fig &lt;- plot_ly(data,
+               x = ~partido, 
+               y = ~p,
+               type = &quot;bar&quot;
+)
+
+fig</code></pre>
+<div id="htmlwidget-d05aab15b2dec914f48b" style="width:672px;height:480px;" class="plotly html-widget"></div>
+<script type="application/json" data-for="htmlwidget-d05aab15b2dec914f48b">{"x":{"visdat":{"1d7d18395b82":["function () ","plotlyVisDat"]},"cur_data":"1d7d18395b82","attrs":{"1d7d18395b82":{"x":{},"y":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"bar"}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"xaxis":{"domain":[0,1],"automargin":true,"title":"partido","type":"category","categoryorder":"array","categoryarray":["estHUMANISTA","estMORENA","estnoREG","estNULOS","estPAN","estPES","estPRD","estPRI","estPT","estPVEM"]},"yaxis":{"domain":[0,1],"automargin":true,"title":"p"},"hovermode":"closest","showlegend":false},"source":"A","config":{"showSendToCloud":false},"data":[{"x":["estPRI","estPAN","estPRD","estPVEM","estPT","estMORENA","estHUMANISTA","estPES","estnoREG","estNULOS"],"y":[0.476783663676862,0.403306703073747,0.0376062313196186,0.0117391705540219,0.0137999550620712,0.028007182116129,0.00693371737175465,0.00949049219991007,0.00066122753173822,0.023410827648169],"type":"bar","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"error_y":{"color":"rgba(31,119,180,1)"},"error_x":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
 </div>
 
 

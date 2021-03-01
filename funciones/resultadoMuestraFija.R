@@ -1,4 +1,57 @@
-simEstratificadoMuestraFija <- function(df, df.estratos, muestra){
+calculaDelta <- function(df, df.estratos, muestra, partido, estPART, estTotal){
+  df.estratos0 <- df %>%
+    group_by(estrato) %>%
+    summarise(vecnh = n()) %>%
+    left_join(df.estratos) %>%
+    select(estrato, vecnh, vecNh)
+  
+  vecEstratos <- df.estratos0$estrato
+  vecnh <- df.estratos0$vecnh
+  vecNh <- df.estratos0$vecNh
+  vecPART <- data.frame(seccion_casilla=df$seccion_casilla, partido)
+  vecPART <- vecPART %>%
+    filter(seccion_casilla %in% muestra) %>%
+    select(partido)
+  #partido <- df$pan
+  #estPART <- estPAN
+  #estTotal <- estTotal
+  df2 <- df %>%
+    filter(seccion_casilla %in% muestra) %>%
+    mutate(Ghi= (vecPART - estPART*votacion_total_emitida) / estTotal)
+  
+  #df2 %>%
+  #  group_by(estrato) %>%
+  #  summarise(Gh.barra = mean(Ghi, na.rm = TRUE)) -> Gh.barra
+  
+  df2 %>%
+    group_by(estrato) %>%
+    summarise(suma = sum(Ghi),
+              cant = n(),
+              Gh.barra = suma/cant) %>%
+    select(estrato, Gh.barra) -> Gh.barra
+  
+  
+  df2 <- df2 %>%
+    left_join(Gh.barra) %>%
+    mutate(Ghi_Gh = (Ghi - Gh.barra)^2) 
+  
+  df2 %>%
+    group_by(estrato) %>%
+    summarise(numerador = sum(Ghi_Gh)) %>%
+    mutate(denominador = vecnh - 1,
+           VarGhi = numerador / denominador) %>%
+    select(VarGhi) -> VarGhi
+  
+  
+  varianza <- sum(vecNh^2 * (1/vecnh - 1/vecNh) * VarGhi, na.rm = TRUE)
+  
+  delta <- sqrt(varianza) * z
+  return(delta)
+}
+
+
+
+resultadoMuestraFija <- function(df, df.estratos, muestra){
   
   #df <- df0  # para pruebas
   #df.estratos <- df.distritosTipo # para pruebas
@@ -33,10 +86,9 @@ simEstratificadoMuestraFija <- function(df, df.estratos, muestra){
   estPAN = df.temporal$Wh %*% df.temporal$PAN / estTotal %>% c()
   estPRI = df.temporal$Wh %*% df.temporal$PRI / estTotal %>% c()
   
+  prueba <- calculaDelta(df, df.estratos, muestra, df$pan, estPAN, estTotal)
   df2 <- df %>%
-    filter(seccion_casilla %in% muestra) %>%
-    select(estrato, seccion_casilla, 
-           total_coalicion, pan, votacion_total_emitida) 
+    filter(seccion_casilla %in% muestra) 
   
   df2 <- df2 %>%
     mutate(GhiPAN = (pan - estPAN*votacion_total_emitida) / estTotal,
@@ -76,19 +128,15 @@ simEstratificadoMuestraFija <- function(df, df.estratos, muestra){
   deltaPAN <- sqrt(varPAN) * z
   deltaPRI <- sqrt(varPRI) * z
   
-  resultado <- cbind(estPRI, estPAN, varPRI, varPAN, deltaPAN, deltaPRI)
+  resultado <- cbind(estPRI, estPAN, 
+                     #varPRI, varPAN, 
+                     deltaPAN, deltaPRI, prueba)
   colnames(resultado) <- c("estPRI", "estPAN", 
-                           "varPRI", "varPAN", 
-                           "deltaPAN", "deltaPRI")
+                           "deltaPAN", "deltaPRI", "prueba")
   
   resultado <- resultado %>%
     as.data.frame()
   rm()
   return(resultado)
 }
-
-#simEstratificadoMuestraFija(df0, df.distritosTipo, muestra)
-
-
-
 
