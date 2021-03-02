@@ -20,7 +20,7 @@ library(plotly)
 rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source("funciones/muestra.R")
-source("funciones/resultadoOtrosPartidos.R")
+source("funciones/resultadoMuestraFija.R")
 ```
 
 ### Lectura de datos
@@ -44,9 +44,8 @@ resultadoReal
 ### Tamaño de muestra
 
 ```{r}
-N <- length(gobernador2015$seccion_casilla)  # total de casillas
-n <- muestra(N)                              # Número de secciones en la muestra
-
+N <- length(gobernador2015$seccion_casilla)
+n <- muestra(N)                             
 z <- 2.575
 #z <- qnorm(1-0.01/2)
 #z <- 1.96
@@ -58,12 +57,15 @@ z <- 2.575
 df.distritosTipo <- gobernador2015 %>%
   group_by(distrito_tipo) %>%
   summarise(LN = sum(lista_nominal),
-            Nh = n(),           # Casillas por distrito
-            p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
+            Nh = n(),           
+            p = LN/sum(gobernador2015$lista_nominal)) %>%  
   mutate(nh = round(n * p)) %>%
   mutate(nh = if_else(nh == 1, 2, nh)) %>%
   arrange(distrito_tipo) %>%
   rename(estrato = distrito_tipo)
+
+df <- gobernador2015 %>%
+    rename(estrato = distrito_tipo) 
 ```
 
 ### Función hora aleatoria (uniforme)
@@ -81,95 +83,129 @@ rand.date = function(start.time, end.time, size){
 # Prueba la función
 hora.inicio <- "2021-06-06 18:00:00"
 hora.final <- "2021-06-07 00:00:00"
-
-rand.date(hora.inicio, hora.final, 2)
 ```
 
-### Lee muestra y asigna hora de llegada
+### Lee muestra
 
 ```{r}
-muestra.fija <- read.csv("muestra.csv")
-hora <- rand.date(hora.inicio, hora.final, length(muestra.fija[,1]))
+#muestra.fija <- read.csv("muestra.csv")
+#write.csv(muestra.fija, "muestra_hora.csv")
+
+muestra.fija <- read.csv("muestra_hora.csv")
+#hora <- rand.date(hora.inicio, hora.final, length(muestra.fija[,1]))
 
 muestra.fija <- muestra.fija %>%
-  cbind(hora) %>%
-  rename(casilla = x) %>%
+  #cbind(hora) %>%
+  #rename(casilla = x) %>%
   select(casilla, hora)
-
-summary(muestra.fija$hora)
 ```
 
 ### Simula en el día
 
 ```{r, warning=FALSE}
-cortes <- c("2021-06-06 19:00:00", "2021-06-06 20:00:00", 
-            "2021-06-06 21:00:00", "2021-06-06 22:00:00",
-            "2021-06-06 23:00:00", "2021-06-07 00:00:00")
-df <- gobernador2015 %>%
-    rename(estrato = distrito_tipo) 
+cortes <- c("2021-06-06 19:00:00", "2021-06-06 19:30:00",
+            "2021-06-06 20:00:00", "2021-06-06 20:30:00", 
+            "2021-06-06 21:00:00", "2021-06-06 21:30:00", 
+            "2021-06-06 22:00:00", "2021-06-06 22:30:00", 
+            "2021-06-06 23:00:00", "2021-06-06 23:30:00", 
+            "2021-06-07 00:00:00")
 
-source("funciones/resultadoMuestraFija.R")
-
-casillas.capt <- c()
+#casillas.capt <- c()
 resumen <- data.frame()
-i<-2
-for(i in 1: length(cortes)){
+```
+
+```{r}
+k <- length(cortes)
+```
+
+```{r, warning=FALSE}
+for(i in 1:k){
   df.muestra0 <- muestra.fija %>%
     filter(hora <= cortes[i]) %>%
     select(casilla)
   muestra0 <- df.muestra0$casilla
-
+  
   df0 <- df %>%
     filter(seccion_casilla %in% muestra0) 
   
-  temp <- resultadoMuestraFija(df0, df.distritosTipo, muestra0)
-
+  casillas.capt = length(muestra0)
+  
+  temp <- cbind(hora = cortes[i],
+                resultadoMuestraFija(df0, df.distritosTipo, muestra0),
+                avance= casillas.capt/length(muestra.fija$casilla))
+  
   resumen <- rbind(resumen, temp)
-  casillas.capt[i] = length(muestra0)
+  rm(temp)
 }
+#resumen
+```
 
-resumen <- cbind(cortes, resumen, 
-                 casillas.capt,
-                 avance= casillas.capt/length(muestra.fija$casilla))
+```{r}
+print(paste("Hora de corte: ", resumen$hora[k]))
+```
+
+```{r}
+votos.partido <- resumen %>%
+  filter(hora == cortes[k]) %>%
+  select(estPRI, estPAN, estPRD, estPT, estMORENA, 
+         estHUMANISTA, estPES, estnoREG, estNULOS) %>%
+  t() %>%
+  as.data.frame() %>%
+  rename(p = V1) %>%
+  arrange() 
+
+data <- data.frame(partido = row.names(votos.partido), p = votos.partido$p)
+
+fig <- plot_ly(data, x = ~partido, y = ~p, type = "bar")
+fig <- fig %>%
+  layout(title = paste("Hora de corte:", cortes[k],
+      "\nCasillas :", length(muestra0),
+      "\nAvance: ", round(100 * length(muestra0)/sum(df.distritosTipo$nh), 2), "%") %>% print())
+fig
+```
+
+
+```{r}
+library(ggplot2)
+data <- data.frame(
+  partido = c("Coalición", "Humanista", "Morena", "PAN", 
+              "Encuentro Social", "PRD", "PT"),
+  porcentaje = c(resumen$estPRI[k], resumen$estHUMANISTA[k], 
+                 resumen$estMORENA[k], resumen$estPAN[k],
+                 resumen$estPES[k], resumen$estPRD[k], 
+                 resumen$estPT[k]),
+  error = c(resumen$deltaPRI[k], resumen$deltaHUMANISTA[k], 
+            resumen$deltaMORENA[k], resumen$deltaPAN[k],
+            resumen$deltaPES[k], resumen$deltaPRD[k], 
+            resumen$deltaPT[k])
+)
+```
+
+
+```{r}
+ggplot(data) +
+    geom_bar(aes(x=partido, y=porcentaje), stat="identity", fill="skyblue", alpha=0.7) +
+    geom_errorbar(aes(x=partido, ymin=porcentaje-error, ymax=porcentaje+error), 
+                   width=0.4, colour="orange", alpha=0.9, size=1.3)
+
+
 ```
 
 
 ### Gráfica  
 
 ```{r, warning=FALSE}
-data <- resumen 
+data <- resumen
 
 fig <- plot_ly(data, 
-               x = ~cortes, y = ~estPRI, type = 'scatter', name = 'PRI',
-               error_y = ~list(array = deltaPRI, color = '#000000')) %>%
-  add_trace(x = ~cortes, y = ~estPAN, type = 'scatter', name = 'PAN',
-               error_y = ~list(array = deltaPAN, color = '#000000'))
+               x = ~cortes[1:k], y = ~estPRI[1:k], type = 'scatter', name = 'PRI',
+               error_y = ~list(array = deltaPRI[1:k], color = '#000000')) %>%
+  add_trace(x = ~cortes[1:k], y = ~estPAN[1:k], type = 'scatter', name = 'PAN',
+               error_y = ~list(array = deltaPAN[1:k], color = '#000000'))
 fig
 ```
 
-```{r}
-resumen
-```
 
-```{r}
-otros <- resultadoOtrosPartidos(df0, df.distritosTipo, muestra0) %>%
-  t() %>%
-  as.data.frame() %>%
-  rename(p = V1) %>%
-  arrange()
-
-data <- data.frame(partido = row.names(otros), p = otros$p)
-
-#data$partido <- factor(data$partido,levels = unique(data$partido)[order(data$p, decreasing = TRUE)])
-
-fig <- plot_ly(data,
-               x = ~partido, 
-               y = ~p,
-               type = "bar"
-)
-
-fig
-```
 
 
 

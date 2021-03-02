@@ -30,7 +30,6 @@ calculaDelta <- function(df, df.estratos, muestra, partido, estPART, estTotal){
               Gh.barra = suma/cant) %>%
     select(estrato, Gh.barra) -> Gh.barra
   
-  
   df2 <- df2 %>%
     left_join(Gh.barra) %>%
     mutate(Ghi_Gh = (Ghi - Gh.barra)^2) 
@@ -42,14 +41,11 @@ calculaDelta <- function(df, df.estratos, muestra, partido, estPART, estTotal){
            VarGhi = numerador / denominador) %>%
     select(VarGhi) -> VarGhi
   
-  
   varianza <- sum(vecNh^2 * (1/vecnh - 1/vecNh) * VarGhi, na.rm = TRUE)
   
   delta <- sqrt(varianza) * z
   return(delta)
 }
-
-
 
 resultadoMuestraFija <- function(df, df.estratos, muestra){
   #df <- df0  # para pruebas
@@ -74,66 +70,49 @@ resultadoMuestraFija <- function(df, df.estratos, muestra){
   df.temporal <- df %>%
     filter(seccion_casilla %in% muestra) %>%
     group_by(estrato) %>% 
-    summarise(PRI = sum(total_coalicion, na.rm = TRUE), 
-              PAN = sum(pan, na.rm = TRUE),
+    summarise(PAN = sum(pan, na.rm = TRUE),
+              PRI = sum(total_coalicion, na.rm = TRUE), 
+              PRD= sum(prd, na.rm = TRUE),
+              PVEM= sum(pvem, na.rm = TRUE), 
+              PT= sum(pt, na.rm = TRUE), 
+              MORENA= sum(morena, na.rm = TRUE), 
+              HUMANISTA= sum(humanista, na.rm = TRUE), 
+              PES= sum(encuentro_social, na.rm = TRUE), 
+              noREG = sum(candidato_no_registrado, na.rm = TRUE), 
+              NULOS = sum(votos_nulos, na.rm = TRUE), 
+              LN = sum(lista_nominal, na.rm = TRUE),
               Total = sum(votacion_total_emitida, na.rm = TRUE))
   df.temporal <- left_join(df.temporal, df.estratos) 
   df.temporal <- df.temporal %>%
     mutate(Wh = vecNh / vecnh)
   
-  estTotal = df.temporal$Wh %*% df.temporal$Total %>% c()
-  estPAN = df.temporal$Wh %*% df.temporal$PAN / estTotal %>% c()
-  estPRI = df.temporal$Wh %*% df.temporal$PRI / estTotal %>% c()
+  estTotal <- df.temporal$Wh %*% df.temporal$Total %>% c()
+  estPAN <- df.temporal$Wh %*% df.temporal$PAN / estTotal %>% c()
+  estPRI <- df.temporal$Wh %*% df.temporal$PRI / estTotal %>% c()
+  estPRD <- df.temporal$Wh %*% df.temporal$PRD / estTotal %>% c()
+  estPT <- df.temporal$Wh %*% df.temporal$PT / estTotal %>% c()
+  estMORENA <- df.temporal$Wh %*% df.temporal$MORENA / estTotal %>% c()
+  estHUMANISTA <- df.temporal$Wh %*% df.temporal$HUMANISTA / estTotal %>% c()
+  estPES <- df.temporal$Wh %*% df.temporal$PES / estTotal %>% c()
+  estnoREG <- df.temporal$Wh %*% df.temporal$noREG / estTotal %>% c()
+  estNULOS <- df.temporal$Wh %*% df.temporal$NULOS / estTotal %>% c()
+  estLN <- df.temporal$Wh %*% df.temporal$LN %>% c()
   
-  pruebaPAN <- calculaDelta(df, df.estratos, muestra, df$pan, estPAN, estTotal)
-  pruebaPRI <- calculaDelta(df, df.estratos, muestra, df$total_coalicion, estPRI, estTotal)
+  deltaPAN <- calculaDelta(df, df.estratos, muestra, df$pan, estPAN, estTotal)
+  deltaPRI <- calculaDelta(df, df.estratos, muestra, df$total_coalicion, estPRI, estTotal)
+  deltaPRD <- calculaDelta(df, df.estratos, muestra, df$prd, estPRD, estTotal) 
+  deltaPT  <- calculaDelta(df, df.estratos, muestra, df$pt, estPT, estTotal) 
+  deltaMORENA  <- calculaDelta(df, df.estratos, muestra, df$morena, estMORENA, estTotal) 
+  deltaHUMANISTA  <- calculaDelta(df, df.estratos, muestra, df$humanista, estHUMANISTA, estTotal) 
+  deltaPES  <- calculaDelta(df, df.estratos, muestra, df$encuentro_social, estPES, estTotal) 
+  deltanoREG  <- calculaDelta(df, df.estratos, muestra, df$candidato_no_registrado, estnoREG, estTotal) 
+  deltaNULOS  <- calculaDelta(df, df.estratos, muestra, df$votos_nulos, estNULOS, estTotal) 
 
-  df2 <- df %>%
-    filter(seccion_casilla %in% muestra) 
-  
-  df2 <- df2 %>%
-    mutate(GhiPAN = (pan - estPAN*votacion_total_emitida) / estTotal,
-           GhiPRI = 
-             (total_coalicion - estPRI*votacion_total_emitida) / estTotal)
-  df2 %>%
-    group_by(estrato) %>%
-    summarise(Gh.barraPAN = mean(GhiPAN, na.rm = TRUE)) -> Gh.barraPAN
-  
-  df2 %>%
-    group_by(estrato) %>%
-    summarise(Gh.barraPRI = mean(GhiPRI, na.rm = TRUE)) -> Gh.barraPRI
-  
-  df2 <- df2 %>%
-    left_join(Gh.barraPAN) %>%
-    mutate(Ghi_GhPAN = (GhiPAN - Gh.barraPAN)^2) %>%
-    left_join(Gh.barraPRI) %>%
-    mutate(Ghi_GhPRI = (GhiPRI - Gh.barraPRI)^2)
-  
-  df2 %>%
-    group_by(estrato) %>%
-    summarise(numeradorPAN = sum(Ghi_GhPAN)) %>%
-    mutate(denominador = vecnh - 1,
-           VarGhiPAN = numeradorPAN / denominador) %>%
-    select(VarGhiPAN) -> VarGhiPAN
-  
-  df2 %>%
-    group_by(estrato) %>%
-    summarise(numeradorPRI = sum(Ghi_GhPRI)) %>%
-    mutate(denominador = vecnh - 1,
-           VarGhiPRI = numeradorPRI / denominador) %>%
-    select(VarGhiPRI) -> VarGhiPRI
-  
-  varPAN <- sum(vecNh^2 * (1/vecnh - 1/vecNh) * VarGhiPAN, na.rm = TRUE)
-  varPRI <- sum(vecNh^2 * (1/vecnh - 1/vecNh) * VarGhiPRI, na.rm = TRUE)
-  
-  deltaPAN <- sqrt(varPAN) * z
-  deltaPRI <- sqrt(varPRI) * z
-  
-  resultado <- cbind(estPRI, estPAN, 
-                     #varPRI, varPAN, 
-                     deltaPAN, deltaPRI, pruebaPAN, pruebaPRI)
-  colnames(resultado) <- c("estPRI", "estPAN", 
-                           "deltaPAN", "deltaPRI", "PAN", "PRI")
+  resultado <- data.frame(estPRI, estPAN, estPRD, estPT, 
+                          estMORENA, estHUMANISTA, estPES, estnoREG,
+                          estNULOS, estTotal, estLN,
+                          deltaPAN, deltaPRI,deltaPRD,deltaPT,deltaMORENA,deltaHUMANISTA,
+                          deltaPES, deltanoREG, deltaNULOS)
   
   resultado <- resultado %>%
     as.data.frame()
