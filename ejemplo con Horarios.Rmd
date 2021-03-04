@@ -75,14 +75,12 @@ rand.date = function(start.time, end.time, size){
   times <- seq(from=as.POSIXct(start.time), 
                to=as.POSIXct(end.time), by="min")  
   U <- runif(size, 1, length(times))  
-  #weibull.times <- (1/vlambda) *(-log(1-U))^(1/valpha)
   date=times[U] 
   return(date)
 }
 
+rand.date(hora.inicio, hora.final,3)
 # Prueba la función
-hora.inicio <- "2021-06-06 18:00:00"
-hora.final <- "2021-06-07 00:00:00"
 ```
 
 ### Lee muestra
@@ -115,7 +113,7 @@ resumen <- data.frame()
 ```
 
 ```{r}
-k <- length(cortes)
+k  <- length(cortes)
 ```
 
 ```{r, warning=FALSE}
@@ -164,7 +162,6 @@ fig <- fig %>%
 fig
 ```
 
-
 ```{r}
 library(ggplot2)
 data <- data.frame(
@@ -180,7 +177,6 @@ data <- data.frame(
             resumen$deltaPT[k])
 )
 ```
-
 
 ```{r}
 ggplot(data) +

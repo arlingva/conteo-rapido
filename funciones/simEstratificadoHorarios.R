@@ -1,15 +1,14 @@
-simEstratificadoHorarios <- function(df, vecEstratos, vecNh, vecnh, vM, pcapturado){
+simEstratificadoHorarios <- function(df, vecEstratos, vecNh, vecnh, pcapturado){
   L <- length(vecEstratos)
-  resultado <- data.frame()
-  estPRI <-rep(0, vM)
-  estPAN <-rep(0, vM)
-  varPRI <-rep(0, vM)
-  varPAN <-rep(0, vM)
-  estTotal <-rep(0, vM)
-  vq <- quantile(1:sum(vecnh), pcapturado)
   
+  resultado <- data.frame()
+  estPRI <-rep(0, M)
+  estPAN <-rep(0, M)
+  varPRI <-rep(0, M)
+  varPAN <-rep(0, M)
+  estTotal <-rep(0, M)
   #i<-1
-  for(i in 1:vM){
+  for(i in 1:M){
     muestra <- c() 
     # Selecciona la muestra dentro de cada estrato
     for(j in 1: L){
@@ -21,16 +20,7 @@ simEstratificadoHorarios <- function(df, vecEstratos, vecNh, vecnh, vM, pcaptura
     
     # Se calcula el porcentaje de votos de cada estrato para cada muestra
     df.temporal <- df %>%
-      filter(seccion_casilla %in% muestra) 
-    orden = sample(1:length(muestra), length(muestra), replace = FALSE)
-    df.temporal <- cbind(df.temporal, orden)
-    
-    #pcapturado<-0.7
-    # filtro 
-    df.temporal <- df.temporal %>%
-      filter(orden <= vq)
-    
-    df.temporal <- df.temporal%>%
+      filter(seccion_casilla %in% muestra) %>%
       group_by(estrato) %>% 
       summarise(PRI = sum(total_coalicion), #suma sobre las casillas: 1 hasta vecnh
                 PAN = sum(pan),   # sum (Yhi)
@@ -97,11 +87,39 @@ simEstratificadoHorarios <- function(df, vecEstratos, vecNh, vecnh, vM, pcaptura
 }
 
 # Valores para probar función
-#df <- gobernador2015  %>%
- # rename(estrato = distrito_local)
-#vecEstratos <- df.distritos$estrato
-#vecNh <- df.distritos$Nh
-#vecnh <- df.distritos$nh
+#df <- gobernador2015  %>% rename(estrato = distrito_tipo)
+#vecEstratos <- df.distritosTipo$estrato
+#vecNh <- df.distritosTipo$Nh
+#vecnh <- df.distritosTipo$nh
+
+
+resumenSimulacion <- function(df, vz){
+  df %>%
+    mutate(MinPRI = estPRI - (vz * sqrt(varPRI)),
+           MaxPRI = estPRI + (vz * sqrt(varPRI)),
+           MinPAN = estPAN - (vz * sqrt(varPAN)),
+           MaxPAN = estPAN + (vz * sqrt(varPAN)),
+           capturaPRI = resultadoReal$PRI > MinPRI & resultadoReal$PRI < MaxPRI,
+           capturaPAN = resultadoReal$PAN > MinPAN & resultadoReal$PAN < MaxPAN,
+           #longIntPRI = MaxPRI-MinPRI,
+           #longIntPAN = MaxPAN-MinPAN,
+           no.Traslape = MaxPAN < MinPRI | MaxPRI < MinPAN
+    )
+}
+
+resumenCaptura <- function(df){
+  rbind(df %>%
+          select(capturaPRI, capturaPAN, no.Traslape) %>%
+          summarise(PRI.capturado = 100*mean(capturaPRI),
+                    PAN.capturado = 100*mean(capturaPAN),
+                    no.Traslapado = 100*mean(no.Traslape)))
+}
+
+# Valores para probar función
+#df <- gobernador2015  %>% rename(estrato = distrito_local)
+#vecEstratos <- df.distritosTipo$estrato
+#vecNh <- df.distritosTipo$Nh
+#vecnh <- df.distritosTipo$nh
 
 
 

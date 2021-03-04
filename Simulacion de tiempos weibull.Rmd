@@ -1,0 +1,24 @@
+---
+title: "Simulación tiempos"
+author: "Arling"
+date: "3/2/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+hora.inicio <- "2021-06-06 18:00:00"
+hora.final <- "2021-06-07 00:00:00"
+
+valpha <- 2
+vlambda <- 1
+
+r <- rweibull(1000, valpha, vlambda)
+hist(r, freq = FALSE, breaks = 12)
+curve(dweibull(x, valpha, vlambda), 0, 20, add = TRUE)
+
+summary(r)
+```

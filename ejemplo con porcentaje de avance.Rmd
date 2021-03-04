@@ -12,19 +12,8 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 library(readxl)
 library(dplyr)
 library(janitor)
-#library(kableExtra)
-#library(tidyverse)
-#library(extrafont)
-#library(scales)
-#library(showtext)
-#library(tint)
-#library(miniUI)
-#library(units)
-#library(ggfortify)
-#library(cowplot)
 library(magrittr)
-#library(Cairo)
-#library(plotly)
+library(plotly)
 ```
 
 ```{r}
@@ -40,7 +29,6 @@ source("funciones/muestra.R")
 ```{r}
 source("funciones/lecturaDatos.R")
 gobernador2015 <- lecturaDatos() 
-#gobernador2015 %>% head()
 ```
 
 ### Resultado real
@@ -76,18 +64,18 @@ source("funciones/simEstratificadoHorarios.R")
 ## Resumen por distrito
 
 ```{r}
-df.distritos <- gobernador2015 %>%
-  group_by(distrito_local) %>%
+df.distritosTipo <- gobernador2015 %>%
+  group_by(distrito_tipo) %>%
   summarise(LN = sum(lista_nominal),
-            Nh = n(),           # Casillas por distrito
-            p = LN/sum(gobernador2015$lista_nominal)) %>%   # Proporción
-  mutate(nh = round(n * p),
-         nh12 = round(N * 0.12 * p),
-         nh15 = round(N * 0.15 * p),
-         nh25 = round(N * 0.25 * p)) %>%
-  arrange(distrito_local) %>%
-  rename(estrato = distrito_local)
-#df.distritos
+            Nh = n(),           
+            p = LN/sum(gobernador2015$lista_nominal)) %>%  
+  mutate(nh = round(n * p)) %>%
+  mutate(nh = if_else(nh == 1, 2, nh)) %>%
+  arrange(distrito_tipo) %>%
+  rename(estrato = distrito_tipo)
+
+df <- gobernador2015 %>%
+    rename(estrato = distrito_tipo) 
 ```
 
 ## Resultados según porcentaje de avance: Caso real
@@ -100,18 +88,16 @@ gobernador2015 %>%
   summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
             PAN = sum(pan) / sum(votacion_total_emitida)) %>%
   select(PRI, PAN) -> resultadoReal
-
-resultadoReal*100
 ```
 
 ```{r, echo = FALSE}
 avance <-seq(0.4, 1, by=0.1)
 
 x<-data.frame()
-for(i in 2:length(avance)){
-  simEstratificadoHorarios(df0, df.distritos$estrato, 
-                         df.distritos$Nh, df.distritos$nh, 
-                         vM = 1, pcapturado = avance[i]) %>%
+for(i in 1:length(avance)){
+  simEstratificadoHorarios(df0, df.distritosTipo$estrato, 
+                         df.distritosTipo$Nh, df.distritosTipo$nh, 
+                         pcapturado = avance[i]) %>%
   select(estPRI, estPAN, deltaPRI, deltaPAN) %>%
   cbind(porc.avance = avance[i]) -> temp
   x <- rbind(x, temp)
@@ -153,14 +139,6 @@ simDistrito <- gobernador2015 %>%
                    df.distritos$Nh, df.distritos$nh, vM = M, pcapturado = 0.7)
 ```
 
-```{r, message = FALSE}
-resumenSimulacion(simDistrito, z) %>%
-  head()
-
-resumenSimulacion(simDistrito, z) %>% 
-  resumenCaptura()
-```
-
 ```{r}
 gobernador2015 <- lecturaDatos() %>%
   rename(pan0 = pan) %>%
@@ -171,7 +149,6 @@ gobernador2015 %>%
             PAN = sum(pan) / sum(votacion_total_emitida)) %>%
   select(PRI, PAN) -> resultadoReal
 
-resultadoReal*100
 ```
 
 ```{r, echo = FALSE}
