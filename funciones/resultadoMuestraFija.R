@@ -43,7 +43,7 @@ calculaDelta <- function(df, df.estratos, muestra, partido, estPART, estTotal){
   
   varianza <- sum(vecNh^2 * (1/vecnh - 1/vecNh) * VarGhi, na.rm = TRUE)
   
-  delta <- sqrt(varianza) * z
+  delta <- sqrt(varianza)
   return(delta)
 }
 

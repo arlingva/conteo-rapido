@@ -1,10 +1,11 @@
 ---
-title: "CONTEO RÁPIDO: GOBERNADOR 2021-2028"
-output: 
+title: "CONTEO RÁPIDO: GOBERNADOR"
+output:
   flexdashboard::flex_dashboard:
-    theme: lumen
-    orientation: columns
-    vertical_layout: fill
+  theme: lumen
+  orientation: columns
+  vertical_layout: fill
+runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -15,6 +16,7 @@ library(tidyverse)
 library(scales)
 library(plotly)
 library(htmlwidgets)
+library(shinyWidgets)
 library(tint)
 library(rgdal)
 library(rgeos)
@@ -34,162 +36,201 @@ library(magrittr)
 
 ```
 
-```{r, include=FALSE}
+```{r, include=FALSE, echo = FALSE}
 rm(list = ls())
-`%notin%` = function(x,y) !(x %in% y)
+`%notin%` = function(x, y) !(x %in% y)
 source("funciones/muestra.R")
 source("funciones/resultadoMuestraFija.R")
-```
 
-```{r, include=FALSE}
-corte <- 10
-cortes <- c("2021-06-06 19:00:00", "2021-06-06 19:30:00",
-            "2021-06-06 20:00:00", "2021-06-06 20:30:00", 
-            "2021-06-06 21:00:00", "2021-06-06 21:30:00", 
-            "2021-06-06 22:00:00", "2021-06-06 22:30:00", 
-            "2021-06-06 23:00:00", "2021-06-06 23:30:00", 
-            "2021-06-07 00:00:00", "2021-06-07 00:30:00",
-            "2021-06-07 01:00:00", "2021-06-07 01:30:00",
-            "2021-06-07 02:00:00", "2021-06-07 21:30:00",
-            "2021-06-07 03:00:00", "2021-06-07 03:30:00",
-            "2021-06-07 04:00:00", "2021-06-07 04:30:00",
-            "2021-06-07 05:00:00", "2021-06-07 05:30:00",
-            "2021-06-07 06:00:00", "2021-06-07 06:30:00",
-            "2021-06-07 07:00:00", "2021-06-07 07:30:00",
-            "2021-06-07 08:00:00", "2021-06-07 08:30:00")
+cortes <- c("2021-06-06 19:00:00",
+            "2021-06-06 19:30:00",
+            "2021-06-06 20:00:00",
+            "2021-06-06 20:30:00",
+            "2021-06-06 21:00:00",
+            "2021-06-06 21:30:00",
+            "2021-06-06 22:00:00",
+            "2021-06-06 22:30:00",
+            "2021-06-06 23:00:00",
+            "2021-06-06 23:30:00",
+            "2021-06-07 00:00:00",
+            "2021-06-07 00:30:00",
+            "2021-06-07 01:00:00",
+            "2021-06-07 01:30:00",
+            "2021-06-07 02:00:00",
+            "2021-06-07 03:00:00",
+            "2021-06-07 03:30:00",
+            "2021-06-07 04:00:00",
+            "2021-06-07 04:30:00",
+            "2021-06-07 05:00:00",
+            "2021-06-07 05:30:00",
+            "2021-06-07 06:00:00",
+            "2021-06-07 06:30:00",
+            "2021-06-07 07:00:00",
+            "2021-06-07 07:30:00",
+            "2021-06-07 08:00:00",
+            "2021-06-07 08:30:00")
 
-source("funciones/lecturaDatos.R")
-gobernador2015 <- lecturaDatos()
-gobernador2015 <- gobernador2015 %>% 
-  mutate(DLOC= case_when(distrito_local== "SAN LUIS RIO COLORADO I" ~ 1,
-                         distrito_local== "PUERTO PEÑASCO II" ~ 2,
-                         distrito_local== "CABORCA III" ~ 3,
-                         distrito_local== "NOGALES NORTE IV" ~ 4,
-                         distrito_local== "NOGALES SUR V" ~ 5,
-                         distrito_local== "CANANEA VI" ~ 6,
-                         distrito_local== "AGUA PRIETA VII"  ~ 7,
-                         distrito_local== "HERMOSILLO NOROESTE VIII" ~ 8,
-                         distrito_local== "HERMOSILLO CENTRO IX" ~ 9,
-                         distrito_local== "HERMOSILLO NORESTE X" ~ 10,
-                         distrito_local== "HERMOSILLO COSTA XI" ~ 11,
-                         distrito_local== "HERMOSILLO SUR XII" ~ 12,
-                         distrito_local== "GUAYMAS XIII" ~ 13,
-                         distrito_local== "EMPALME XIV" ~ 14,
-                         distrito_local== "OBREGON SUR XV" ~ 15,
-                         distrito_local== "OBREGON SURESTE XVI" ~ 16,
-                         distrito_local== "OBREGON CENTRO XVII" ~ 17,
-                         distrito_local== "OBREGON NORTE XVIII" ~ 18,
-                         distrito_local== "NAVOJOA NORTE XIX" ~ 19,
-                         distrito_local== "ETCHOJOA XX" ~ 20,
-                         distrito_local== "HUATABAMPO XXI"  ~ 21))
+avanceestatal_reactive <- reactive({
 
-muestra.fija <- read.csv("muestra_hora.csv")
+  source("funciones/lecturaDatos.R")
+  gobernador2015 <- lecturaDatos()
+  gobernador2015 <- gobernador2015 %>%
+    mutate(DLOC = case_when(distrito_local == "SAN LUIS RIO COLORADO I" ~ 1,
+                            distrito_local == "PUERTO PEÑASCO II" ~ 2,
+                            distrito_local == "CABORCA III" ~ 3,
+                            distrito_local == "NOGALES NORTE IV" ~ 4,
+                            distrito_local == "NOGALES SUR V" ~ 5,
+                            distrito_local == "CANANEA VI" ~ 6,
+                            distrito_local == "AGUA PRIETA VII" ~ 7,
+                            distrito_local == "HERMOSILLO NOROESTE VIII" ~ 8,
+                            distrito_local == "HERMOSILLO CENTRO IX" ~ 9,
+                            distrito_local == "HERMOSILLO NORESTE X" ~ 10,
+                            distrito_local == "HERMOSILLO COSTA XI" ~ 11,
+                            distrito_local == "HERMOSILLO SUR XII" ~ 12,
+                            distrito_local == "GUAYMAS XIII" ~ 13,
+                            distrito_local == "EMPALME XIV" ~ 14,
+                            distrito_local == "OBREGON SUR XV" ~ 15,
+                            distrito_local == "OBREGON SURESTE XVI" ~ 16,
+                            distrito_local == "OBREGON CENTRO XVII" ~ 17,
+                            distrito_local == "OBREGON NORTE XVIII" ~ 18,
+                            distrito_local == "NAVOJOA NORTE XIX" ~ 19,
+                            distrito_local == "ETCHOJOA XX" ~ 20,
+                            distrito_local == "HUATABAMPO XXI" ~ 21))
 
-muestra.fija <- muestra.fija %>%
-  select(casilla, hora)
-distritocasillas<- gobernador2015 %>% 
-  select(distrito_local, seccion_casilla) %>% 
-  rename(casilla=seccion_casilla) 
-distritomuestra <- muestra.fija %>% left_join(distritocasillas) %>% 
-  count(distrito_local, name="muestra")
+  muestra.fija <- read.csv("muestra_hora.csv")
 
-df.muestra0 <- muestra.fija %>%
-    filter(hora <= cortes[corte]) %>%
+  muestra.fija <- muestra.fija %>%
+    select(casilla, hora)
+  distritocasillas <- gobernador2015 %>%
+    select(distrito_local, seccion_casilla) %>%
+    rename(casilla = seccion_casilla)
+  distritomuestra <- muestra.fija %>%
+    left_join(distritocasillas) %>%
+    count(distrito_local, name = "muestra")
+
+  df.muestra0 <- muestra.fija %>%
+    filter(hora <= input$HourLapse) %>%
     select(casilla)
-  
-muestra0 <- df.muestra0$casilla
 
-muestradistritos <- muestra0
-  
-gobercorte <- gobernador2015 %>%
-    filter(seccion_casilla %in% muestra0) 
-  
-casillas.capt <- length(muestra0)
-muestraestatal <- nrow(muestra.fija)
+  muestra0 <- df.muestra0$casilla
 
-```
+  muestradistritos <- muestra0
 
-```{r, include=FALSE}
-cortemuestra <- gobercorte %>% 
-  count(distrito_local, name="avancecasillas")
-avancedistritos <- gobercorte %>% 
-  group_by(distrito_local, DLOC) %>% 
-  summarize(pan=sum(pan), 
-            pri=sum(total_coalicion),
-            morena=sum(morena),
-            prd=sum(prd),
-            humanista=sum(humanista),
-            pes=sum(encuentro_social),
-            pt=sum(pt),
-            votacion_emitida=sum(total_votos_validos),
-            votos_nulos=sum(votos_nulos),
-            lista_nominal=sum(lista_nominal)) 
+  gobercorte <- gobernador2015 %>%
+    filter(seccion_casilla %in% muestra0)
 
-avancedistritos <- avancedistritos %>% left_join(cortemuestra) %>% left_join(distritomuestra)
+  casillas.capt <- length(muestra0)
+  muestraestatal <- nrow(muestra.fija)
 
-avancedistritos <- avancedistritos %>% mutate(ppan=round(pan/votacion_emitida,3), 
-                                          ppri=round(pri/votacion_emitida,3), 
-                                          pmorena=round(morena/votacion_emitida,3), 
-                                          pprd=round(prd/votacion_emitida,3), 
-                                          pph=round(humanista/votacion_emitida,3), 
-                                          ppes=round(pes/votacion_emitida,3), 
-                                          ppt=round(pt/votacion_emitida,3), 
-                                          pnulos=round(votos_nulos/votacion_emitida,3), 
-                                          participacion =round(votacion_emitida/lista_nominal,3), 
-                                          avance= round(avancecasillas/muestra,3))
+  cortemuestra <- gobercorte %>%
+    count(distrito_local, name = "avancecasillas")
+  avancedistritos <- gobercorte %>%
+    group_by(distrito_local, DLOC) %>%
+    summarize(pan = sum(pan),
+              pri = sum(total_coalicion),
+              morena = sum(morena),
+              prd = sum(prd),
+              humanista = sum(humanista),
+              pes = sum(encuentro_social),
+              pt = sum(pt),
+              votacion_emitida = sum(total_votos_validos),
+              votos_nulos = sum(votos_nulos),
+              lista_nominal = sum(lista_nominal))
 
+  avancedistritos <- avancedistritos %>%
+    left_join(cortemuestra) %>%
+    left_join(distritomuestra)
 
-avanceestatal <- gobercorte %>% ungroup() %>% 
-  summarize(pan=sum(pan), 
-            pri=sum(total_coalicion),
-            morena=sum(morena),
-            prd=sum(prd),
-            humanista=sum(humanista),
-            pes=sum(encuentro_social),
-            pt=sum(pt),
-            votacion_emitida=sum(total_votos_validos),
-            votos_nulos=sum(votos_nulos),
-            lista_nominal=sum(lista_nominal)) 
-avanceestatal <- avanceestatal %>% mutate(ppan=round(pan/votacion_emitida,3), 
-                                          ppri=round(pri/votacion_emitida,3), 
-                                          pmorena=round(morena/votacion_emitida,3), 
-                                          pprd=round(prd/votacion_emitida,3), 
-                                          pph=round(humanista/votacion_emitida,3), 
-                                          ppes=round(pes/votacion_emitida,3), 
-                                          ppt=round(pt/votacion_emitida,3),
-                                          pnulos=round(votos_nulos/votacion_emitida,3), 
-                                          participacion =round(votacion_emitida/lista_nominal,3), 
-                                          avance= round(casillas.capt/muestraestatal,3))
+  avancedistritos <- avancedistritos %>% mutate(ppan = round(pan / votacion_emitida, 3),
+                                                ppri = round(pri / votacion_emitida, 3),
+                                                pmorena = round(morena / votacion_emitida, 3),
+                                                pprd = round(prd / votacion_emitida, 3),
+                                                pph = round(humanista / votacion_emitida, 3),
+                                                ppes = round(pes / votacion_emitida, 3),
+                                                ppt = round(pt / votacion_emitida, 3),
+                                                pnulos = round(votos_nulos / votacion_emitida, 3),
+                                                participacion = round(votacion_emitida / lista_nominal, 3),
+                                                avance = round(avancecasillas / muestra, 3))
+
+  casillas <- gobercorte %>% select(casilla_tipo)
+  urbanas <- sum(casillas$casilla_tipo == 'URBANA')/length(casillas$casilla_tipo)
+  rurales <- sum(casillas$casilla_tipo == 'RURAL')/length(casillas$casilla_tipo)
+
+  avanceestatal <- gobercorte %>%
+    ungroup() %>%
+    summarize(pan = sum(pan),
+              pri = sum(total_coalicion),
+              morena = sum(morena),
+              prd = sum(prd),
+              humanista = sum(humanista),
+              pes = sum(encuentro_social),
+              pt = sum(pt),
+              votacion_emitida = sum(total_votos_validos),
+              votos_nulos = sum(votos_nulos),
+              lista_nominal = sum(lista_nominal))
+  avanceestatal <- avanceestatal %>% mutate(ppan = round(pan / votacion_emitida, 3),
+                                            ppri = round(pri / votacion_emitida, 3),
+                                            pmorena = round(morena / votacion_emitida, 3),
+                                            pprd = round(prd / votacion_emitida, 3),
+                                            pph = round(humanista / votacion_emitida, 3),
+                                            ppes = round(pes / votacion_emitida, 3),
+                                            ppt = round(pt / votacion_emitida, 3),
+                                            pnulos = round(votos_nulos / votacion_emitida, 3),
+                                            participacion = round(votacion_emitida / lista_nominal, 3),
+                                            avance = round(casillas.capt / muestraestatal, 3),
+                                            urbanas = urbanas,
+                                            rurales = rurales)
+})
 ```
 
 RESULTADOS AL CORTE
 =====================================
 
-
 Column {data-width=100}
 -----------------------------------------------------------------------
-
-
-### **Hora de corte**
-
-```{r}
-valueBox(format(strptime(cortes[corte],'%Y-%m-%d %H:%M:%S'),'%H:%M'), color= "orange", icon="ion-ios-clock-outline")
+#### Hora de corte
+```{r, fig.align='center', echo = FALSE}
+sliderTextInput("HourLapse",
+                "Interval:",
+                choices = sort(unique(cortes)),
+                select = "2021-06-06 19:30:00")
 ```
 
 ### **Avance de captura de muestra**
 
-```{r}
-valueBox(percent(avanceestatal$avance), color= "#3488A0", icon="ion-ios-checkmark-outline")
+```{r, echo = FALSE}
+renderValueBox({
+  percent(avanceestatal_reactive()$avance)
+})
 ```
 
 ### **Participación ciudadana en muestra**
-```{r}
-valueBox(percent(avanceestatal$participacion), color= "#3488A0", icon="ion-ios-people-outline")
+```{r, echo = FALSE}
+renderValueBox({
+  percent(avanceestatal_reactive()$participacion)
+})
 ```
 
 ### **Votos nulos en muestra**
+```{r, echo = FALSE}
+renderValueBox({
+  percent(avanceestatal_reactive()$pnulos)
+})
+```
+
+### **Porcentaje de casillas urbanas en muestra**
 ```{r}
-valueBox(percent(avanceestatal$pnulos), color= "#3488A0", icon="ion-ios-close-outline")
+renderValueBox({
+  percent(avanceestatal_reactive()$urbanas)
+})
+```
+
+### **Porcentaje de casillas rurales en muestra**
+```{r}
+
+renderValueBox({
+  percent(avanceestatal_reactive()$rurales)
+})
 ```
 
 Column {data-width=400}
@@ -197,16 +238,121 @@ Column {data-width=400}
 
 ### RESULTADO PROYECTADO
 
-```{r, ,warning=FALSE, include=FALSE}
-N <- length(gobernador2015$seccion_casilla)
-n <- muestra(N)                             
+```{r, ,warning=FALSE, include=FALSE, echo = FALSE}
+data_reactive <- reactive({
+
+  source("funciones/lecturaDatos.R")
+  gobernador2015 <- lecturaDatos()
+  gobernador2015 <- gobernador2015 %>%
+    mutate(DLOC = case_when(distrito_local == "SAN LUIS RIO COLORADO I" ~ 1,
+                            distrito_local == "PUERTO PEÑASCO II" ~ 2,
+                            distrito_local == "CABORCA III" ~ 3,
+                            distrito_local == "NOGALES NORTE IV" ~ 4,
+                            distrito_local == "NOGALES SUR V" ~ 5,
+                            distrito_local == "CANANEA VI" ~ 6,
+                            distrito_local == "AGUA PRIETA VII" ~ 7,
+                            distrito_local == "HERMOSILLO NOROESTE VIII" ~ 8,
+                            distrito_local == "HERMOSILLO CENTRO IX" ~ 9,
+                            distrito_local == "HERMOSILLO NORESTE X" ~ 10,
+                            distrito_local == "HERMOSILLO COSTA XI" ~ 11,
+                            distrito_local == "HERMOSILLO SUR XII" ~ 12,
+                            distrito_local == "GUAYMAS XIII" ~ 13,
+                            distrito_local == "EMPALME XIV" ~ 14,
+                            distrito_local == "OBREGON SUR XV" ~ 15,
+                            distrito_local == "OBREGON SURESTE XVI" ~ 16,
+                            distrito_local == "OBREGON CENTRO XVII" ~ 17,
+                            distrito_local == "OBREGON NORTE XVIII" ~ 18,
+                            distrito_local == "NAVOJOA NORTE XIX" ~ 19,
+                            distrito_local == "ETCHOJOA XX" ~ 20,
+                            distrito_local == "HUATABAMPO XXI" ~ 21))
+
+  muestra.fija <- read.csv("muestra_hora.csv")
+
+  muestra.fija <- muestra.fija %>%
+    select(casilla, hora)
+  distritocasillas <- gobernador2015 %>%
+    select(distrito_local, seccion_casilla) %>%
+    rename(casilla = seccion_casilla)
+  distritomuestra <- muestra.fija %>%
+    left_join(distritocasillas) %>%
+    count(distrito_local, name = "muestra")
+
+  df.muestra0 <- muestra.fija %>%
+    filter(hora <= input$HourLapse) %>%
+    select(casilla)
+
+  muestra0 <- df.muestra0$casilla
+
+  muestradistritos <- muestra0
+
+  gobercorte <- gobernador2015 %>%
+    filter(seccion_casilla %in% muestra0)
+
+  casillas.capt <- length(muestra0)
+  muestraestatal <- nrow(muestra.fija)
+
+  cortemuestra <- gobercorte %>%
+    count(distrito_local, name = "avancecasillas")
+  avancedistritos <- gobercorte %>%
+    group_by(distrito_local, DLOC) %>%
+    summarize(pan = sum(pan),
+              pri = sum(total_coalicion),
+              morena = sum(morena),
+              prd = sum(prd),
+              humanista = sum(humanista),
+              pes = sum(encuentro_social),
+              pt = sum(pt),
+              votacion_emitida = sum(total_votos_validos),
+              votos_nulos = sum(votos_nulos),
+              lista_nominal = sum(lista_nominal))
+
+  avancedistritos <- avancedistritos %>%
+    left_join(cortemuestra) %>%
+    left_join(distritomuestra)
+
+  avancedistritos <- avancedistritos %>% mutate(ppan = round(pan / votacion_emitida, 3),
+                                                ppri = round(pri / votacion_emitida, 3),
+                                                pmorena = round(morena / votacion_emitida, 3),
+                                                pprd = round(prd / votacion_emitida, 3),
+                                                pph = round(humanista / votacion_emitida, 3),
+                                                ppes = round(pes / votacion_emitida, 3),
+                                                ppt = round(pt / votacion_emitida, 3),
+                                                pnulos = round(votos_nulos / votacion_emitida, 3),
+                                                participacion = round(votacion_emitida / lista_nominal, 3),
+                                                avance = round(avancecasillas / muestra, 3))
+
+
+  avanceestatal <- gobercorte %>%
+    ungroup() %>%
+    summarize(pan = sum(pan),
+              pri = sum(total_coalicion),
+              morena = sum(morena),
+              prd = sum(prd),
+              humanista = sum(humanista),
+              pes = sum(encuentro_social),
+              pt = sum(pt),
+              votacion_emitida = sum(total_votos_validos),
+              votos_nulos = sum(votos_nulos),
+              lista_nominal = sum(lista_nominal))
+  avanceestatal <- avanceestatal %>% mutate(ppan = round(pan / votacion_emitida, 3),
+                                            ppri = round(pri / votacion_emitida, 3),
+                                            pmorena = round(morena / votacion_emitida, 3),
+                                            pprd = round(prd / votacion_emitida, 3),
+                                            pph = round(humanista / votacion_emitida, 3),
+                                            ppes = round(pes / votacion_emitida, 3),
+                                            ppt = round(pt / votacion_emitida, 3),
+                                            pnulos = round(votos_nulos / votacion_emitida, 3),
+                                            participacion = round(votacion_emitida / lista_nominal, 3),
+                                            avance = round(casillas.capt / muestraestatal, 3))
+  N <- length(gobernador2015$seccion_casilla)
+n <- muestra(N)
 z <- 2.575
 
 df.distritosTipo <- gobernador2015 %>%
   group_by(distrito_tipo) %>%
   summarise(LN = sum(lista_nominal),
-            Nh = n(),           
-            p = LN/sum(gobernador2015$lista_nominal)) %>%  
+            Nh = n(),
+            p = LN/sum(gobernador2015$lista_nominal)) %>%
   mutate(nh = round(n * p)) %>%
   mutate(nh = if_else(nh == 1, 2, nh)) %>%
   arrange(distrito_tipo) %>%
@@ -215,93 +361,344 @@ df.distritosTipo <- gobernador2015 %>%
 df <- gobernador2015 %>%
     rename(estrato = distrito_tipo)
 resumen <- data.frame()
-
-for(i in 1:corte){
+for(i in 1:match(input$HourLapse, cortes)){
   df.muestra0 <- muestra.fija %>%
     filter(hora <= cortes[i]) %>%
     select(casilla)
   muestra0 <- df.muestra0$casilla
-  
+
   df0 <- df %>%
-    filter(seccion_casilla %in% muestra0) 
-  
+    filter(seccion_casilla %in% muestra0)
+
   casillas.capt = length(muestra0)
-  
   temp <- cbind(hora = cortes[i],
                 resultadoMuestraFija(df0, df.distritosTipo, muestra0),
                 avance= casillas.capt/length(muestra.fija$casilla))
-  
   resumen <- rbind(resumen, temp)
   rm(temp)
 }
 
-```
-
-```{r, include=FALSE}
 data <- data.frame(
-  partido = c("PRI", "PAN", "MORENA", 
+  partido = c("PRI", "PAN", "MORENA",
               "PRD", "PES", "PT", "PH"),
-  porcentaje = round(c(resumen$estPRI[corte], resumen$estPAN[corte], 
-                 resumen$estMORENA[corte], resumen$estPRD[corte],
-                 resumen$estPES[corte], resumen$estPT[corte],resumen$estHUMANISTA[corte]),3),
-  error = round(c(resumen$deltaPRI[corte], resumen$deltaPAN[corte], 
-            resumen$deltaMORENA[corte],  resumen$deltaPRD[corte], 
-            resumen$deltaPES[corte],
-            resumen$deltaPT[corte],
-            resumen$deltaHUMANISTA[corte]),3))
+  porcentaje = round(c(resumen$estPRI[match(input$HourLapse, cortes)], resumen$estPAN[match(input$HourLapse, cortes)],
+                 resumen$estMORENA[match(input$HourLapse, cortes)], resumen$estPRD[match(input$HourLapse, cortes)],
+                 resumen$estPES[match(input$HourLapse, cortes)], resumen$estPT[match(input$HourLapse, cortes)],resumen$estHUMANISTA[match(input$HourLapse, cortes)]),3),
+  error = round(c(resumen$deltaPRI[match(input$HourLapse, cortes)], resumen$deltaPAN[match(input$HourLapse, cortes)],
+            resumen$deltaMORENA[match(input$HourLapse, cortes)],  resumen$deltaPRD[match(input$HourLapse, cortes)],
+            resumen$deltaPES[match(input$HourLapse, cortes)],
+            resumen$deltaPT[match(input$HourLapse, cortes)],
+            resumen$deltaHUMANISTA[match(input$HourLapse, cortes)]),3))
 data <- data %>% mutate(partido = fct_reorder(partido, desc(porcentaje)))
+  print(data)
+})
+
 ```
 
 ```{r, fig.width=10, fig.height= 5, dev = "png", dev.args = list(type = "cairo-png")}
-ggplot(data) +
+
+renderPlot({
+ggplot(data_reactive()) +
     geom_bar(aes(x=partido, y=porcentaje*100), stat="identity", fill="#3488A0", color= "#276678", stroke=0.5, alpha=0.7, width = 0.7) +
-    geom_errorbar(aes(x=partido, ymin=porcentaje*100-error*100, ymax=porcentaje*100+error*100), 
+    geom_errorbar(aes(x=partido, ymin=porcentaje*100-error*100, ymax=porcentaje*100+error*100),
                    width=0.4, colour="orange", alpha=0.9, size=1.3)+
-  theme_minimal() + 
-  theme(axis.text = element_text(size = 12), axis.title = element_text(size = 15)) + 
-  labs(x=NULL, y= "% Votación") 
-
-
-
+  theme_minimal() +
+  theme(axis.text = element_text(size = 12), axis.title = element_text(size = 15)) +
+  labs(x=NULL, y= "% Votación")
+})
 ```
-
 
 ### TENDENCIAS
 
-```{r,  include=FALSE}
+```{r,  include=FALSE, echo = FALSE}
+resumen_reactive <- reactive({
+
+  source("funciones/lecturaDatos.R")
+  gobernador2015 <- lecturaDatos()
+  gobernador2015 <- gobernador2015 %>%
+    mutate(DLOC = case_when(distrito_local == "SAN LUIS RIO COLORADO I" ~ 1,
+                            distrito_local == "PUERTO PEÑASCO II" ~ 2,
+                            distrito_local == "CABORCA III" ~ 3,
+                            distrito_local == "NOGALES NORTE IV" ~ 4,
+                            distrito_local == "NOGALES SUR V" ~ 5,
+                            distrito_local == "CANANEA VI" ~ 6,
+                            distrito_local == "AGUA PRIETA VII" ~ 7,
+                            distrito_local == "HERMOSILLO NOROESTE VIII" ~ 8,
+                            distrito_local == "HERMOSILLO CENTRO IX" ~ 9,
+                            distrito_local == "HERMOSILLO NORESTE X" ~ 10,
+                            distrito_local == "HERMOSILLO COSTA XI" ~ 11,
+                            distrito_local == "HERMOSILLO SUR XII" ~ 12,
+                            distrito_local == "GUAYMAS XIII" ~ 13,
+                            distrito_local == "EMPALME XIV" ~ 14,
+                            distrito_local == "OBREGON SUR XV" ~ 15,
+                            distrito_local == "OBREGON SURESTE XVI" ~ 16,
+                            distrito_local == "OBREGON CENTRO XVII" ~ 17,
+                            distrito_local == "OBREGON NORTE XVIII" ~ 18,
+                            distrito_local == "NAVOJOA NORTE XIX" ~ 19,
+                            distrito_local == "ETCHOJOA XX" ~ 20,
+                            distrito_local == "HUATABAMPO XXI" ~ 21))
+
+  muestra.fija <- read.csv("muestra_hora.csv")
+
+  muestra.fija <- muestra.fija %>%
+    select(casilla, hora)
+  distritocasillas <- gobernador2015 %>%
+    select(distrito_local, seccion_casilla) %>%
+    rename(casilla = seccion_casilla)
+  distritomuestra <- muestra.fija %>%
+    left_join(distritocasillas) %>%
+    count(distrito_local, name = "muestra")
+
+  df.muestra0 <- muestra.fija %>%
+    filter(hora <= input$HourLapse) %>%
+    select(casilla)
+
+  muestra0 <- df.muestra0$casilla
+
+  muestradistritos <- muestra0
+
+  gobercorte <- gobernador2015 %>%
+    filter(seccion_casilla %in% muestra0)
+
+  casillas.capt <- length(muestra0)
+  muestraestatal <- nrow(muestra.fija)
+
+  cortemuestra <- gobercorte %>%
+    count(distrito_local, name = "avancecasillas")
+  avancedistritos <- gobercorte %>%
+    group_by(distrito_local, DLOC) %>%
+    summarize(pan = sum(pan),
+              pri = sum(total_coalicion),
+              morena = sum(morena),
+              prd = sum(prd),
+              humanista = sum(humanista),
+              pes = sum(encuentro_social),
+              pt = sum(pt),
+              votacion_emitida = sum(total_votos_validos),
+              votos_nulos = sum(votos_nulos),
+              lista_nominal = sum(lista_nominal))
+
+  avancedistritos <- avancedistritos %>%
+    left_join(cortemuestra) %>%
+    left_join(distritomuestra)
+
+  avancedistritos <- avancedistritos %>% mutate(ppan = round(pan / votacion_emitida, 3),
+                                                ppri = round(pri / votacion_emitida, 3),
+                                                pmorena = round(morena / votacion_emitida, 3),
+                                                pprd = round(prd / votacion_emitida, 3),
+                                                pph = round(humanista / votacion_emitida, 3),
+                                                ppes = round(pes / votacion_emitida, 3),
+                                                ppt = round(pt / votacion_emitida, 3),
+                                                pnulos = round(votos_nulos / votacion_emitida, 3),
+                                                participacion = round(votacion_emitida / lista_nominal, 3),
+                                                avance = round(avancecasillas / muestra, 3))
+
+
+  avanceestatal <- gobercorte %>%
+    ungroup() %>%
+    summarize(pan = sum(pan),
+              pri = sum(total_coalicion),
+              morena = sum(morena),
+              prd = sum(prd),
+              humanista = sum(humanista),
+              pes = sum(encuentro_social),
+              pt = sum(pt),
+              votacion_emitida = sum(total_votos_validos),
+              votos_nulos = sum(votos_nulos),
+              lista_nominal = sum(lista_nominal))
+  avanceestatal <- avanceestatal %>% mutate(ppan = round(pan / votacion_emitida, 3),
+                                            ppri = round(pri / votacion_emitida, 3),
+                                            pmorena = round(morena / votacion_emitida, 3),
+                                            pprd = round(prd / votacion_emitida, 3),
+                                            pph = round(humanista / votacion_emitida, 3),
+                                            ppes = round(pes / votacion_emitida, 3),
+                                            ppt = round(pt / votacion_emitida, 3),
+                                            pnulos = round(votos_nulos / votacion_emitida, 3),
+                                            participacion = round(votacion_emitida / lista_nominal, 3),
+                                            avance = round(casillas.capt / muestraestatal, 3))
+  N <- length(gobernador2015$seccion_casilla)
+n <- muestra(N)
+z <- 2.575
+
+df.distritosTipo <- gobernador2015 %>%
+  group_by(distrito_tipo) %>%
+  summarise(LN = sum(lista_nominal),
+            Nh = n(),
+            p = LN/sum(gobernador2015$lista_nominal)) %>%
+  mutate(nh = round(n * p)) %>%
+  mutate(nh = if_else(nh == 1, 2, nh)) %>%
+  arrange(distrito_tipo) %>%
+  rename(estrato = distrito_tipo)
+
+df <- gobernador2015 %>%
+    rename(estrato = distrito_tipo)
+resumen <- data.frame()
+for(i in 1:match(input$HourLapse, cortes)){
+  df.muestra0 <- muestra.fija %>%
+    filter(hora <= cortes[i]) %>%
+    select(casilla)
+  muestra0 <- df.muestra0$casilla
+
+  df0 <- df %>%
+    filter(seccion_casilla %in% muestra0)
+
+  casillas.capt = length(muestra0)
+  temp <- cbind(hora = cortes[i],
+                resultadoMuestraFija(df0, df.distritosTipo, muestra0),
+                avance= casillas.capt/length(muestra.fija$casilla))
+  resumen <- rbind(resumen, temp)
+  rm(temp)
+}
+
+data <- data.frame(
+  partido = c("PRI", "PAN", "MORENA",
+              "PRD", "PES", "PT", "PH"),
+  porcentaje = round(c(resumen$estPRI[match(input$HourLapse, cortes)], resumen$estPAN[match(input$HourLapse, cortes)],
+                 resumen$estMORENA[match(input$HourLapse, cortes)], resumen$estPRD[match(input$HourLapse, cortes)],
+                 resumen$estPES[match(input$HourLapse, cortes)], resumen$estPT[match(input$HourLapse, cortes)],resumen$estHUMANISTA[match(input$HourLapse, cortes)]),3),
+  error = round(c(resumen$deltaPRI[match(input$HourLapse, cortes)], resumen$deltaPAN[match(input$HourLapse, cortes)],
+            resumen$deltaMORENA[match(input$HourLapse, cortes)],  resumen$deltaPRD[match(input$HourLapse, cortes)],
+            resumen$deltaPES[match(input$HourLapse, cortes)],
+            resumen$deltaPT[match(input$HourLapse, cortes)],
+            resumen$deltaHUMANISTA[match(input$HourLapse, cortes)]),3))
+data <- data %>% mutate(partido = fct_reorder(partido, desc(porcentaje)))
+
 resumen <- resumen %>% mutate(across(2:21, round, 3))
+})
+```
 
-data <- resumen
-
-fig <- plot_ly(data, 
-               x = ~cortes[1:corte], y =~estPRI[1:corte]*100, type = 'scatter',  name = 'PRI', 
-               error_y = ~list(array = deltaPRI[1:corte]*100, color = '#000000')) %>%
-  add_trace(x = ~cortes[1:corte], y = ~estPAN[1:corte]*100, type = 'scatter', name = 'PAN',
-               error_y = ~list(array = deltaPAN[1:corte]*100, color = '#000000')) %>% 
+```{r}
+renderPlotly(plot_ly(resumen_reactive(),
+               x = ~cortes[1:match(input$HourLapse, cortes)], y =~estPRI[1:match(input$HourLapse, cortes)]*100, type = 'scatter',  name = 'PRI',
+               error_y = ~list(array = deltaPRI[1:match(input$HourLapse, cortes)]*100, color = '#000000')) %>%
+  add_trace(x = ~cortes[1:match(input$HourLapse, cortes)], y = ~estPAN[1:match(input$HourLapse, cortes)]*100, type = 'scatter', name = 'PAN',
+               error_y = ~list(array = deltaPAN[1:match(input$HourLapse, cortes)]*100, color = '#000000')) %>%
   layout(xaxis = list(
         type = 'date',
         title= " "
   ),
-  yaxis=list(title="% Votación"))
-
-```
-
-```{r}
-fig
+  yaxis=list(title="% Votación")))
 ```
 
 Column {data-width=500}
 -----------------------------------------------------------------------
 
-### AVANCE DISTRITAL
+### Avance Distrito
 
-```{r , include=FALSE}
-capa_distritos <- readOGR("Shape15", layer="DLOC",  encoding = "UTF-8", use_iconv=TRUE)
+```{r , include=FALSE, echo = FALSE}
+
+mapadistritos_reactive <- reactive({
+
+  source("funciones/lecturaDatos.R")
+  gobernador2015 <- lecturaDatos()
+  gobernador2015 <- gobernador2015 %>%
+    mutate(DLOC = case_when(distrito_local == "SAN LUIS RIO COLORADO I" ~ 1,
+                            distrito_local == "PUERTO PEÑASCO II" ~ 2,
+                            distrito_local == "CABORCA III" ~ 3,
+                            distrito_local == "NOGALES NORTE IV" ~ 4,
+                            distrito_local == "NOGALES SUR V" ~ 5,
+                            distrito_local == "CANANEA VI" ~ 6,
+                            distrito_local == "AGUA PRIETA VII" ~ 7,
+                            distrito_local == "HERMOSILLO NOROESTE VIII" ~ 8,
+                            distrito_local == "HERMOSILLO CENTRO IX" ~ 9,
+                            distrito_local == "HERMOSILLO NORESTE X" ~ 10,
+                            distrito_local == "HERMOSILLO COSTA XI" ~ 11,
+                            distrito_local == "HERMOSILLO SUR XII" ~ 12,
+                            distrito_local == "GUAYMAS XIII" ~ 13,
+                            distrito_local == "EMPALME XIV" ~ 14,
+                            distrito_local == "OBREGON SUR XV" ~ 15,
+                            distrito_local == "OBREGON SURESTE XVI" ~ 16,
+                            distrito_local == "OBREGON CENTRO XVII" ~ 17,
+                            distrito_local == "OBREGON NORTE XVIII" ~ 18,
+                            distrito_local == "NAVOJOA NORTE XIX" ~ 19,
+                            distrito_local == "ETCHOJOA XX" ~ 20,
+                            distrito_local == "HUATABAMPO XXI" ~ 21))
+
+  muestra.fija <- read.csv("muestra_hora.csv")
+
+  muestra.fija <- muestra.fija %>%
+    select(casilla, hora)
+  distritocasillas <- gobernador2015 %>%
+    select(distrito_local, seccion_casilla) %>%
+    rename(casilla = seccion_casilla)
+  distritomuestra <- muestra.fija %>%
+    left_join(distritocasillas) %>%
+    count(distrito_local, name = "muestra")
+
+  df.muestra0 <- muestra.fija %>%
+    filter(hora <= input$HourLapse) %>%
+    select(casilla)
+
+  muestra0 <- df.muestra0$casilla
+
+  muestradistritos <- muestra0
+
+  gobercorte <- gobernador2015 %>%
+    filter(seccion_casilla %in% muestra0)
+
+  casillas.capt <- length(muestra0)
+  muestraestatal <- nrow(muestra.fija)
+
+  cortemuestra <- gobercorte %>%
+    count(distrito_local, name = "avancecasillas")
+  avancedistritos <- gobercorte %>%
+    group_by(distrito_local, DLOC) %>%
+    summarize(pan = sum(pan),
+              pri = sum(total_coalicion),
+              morena = sum(morena),
+              prd = sum(prd),
+              humanista = sum(humanista),
+              pes = sum(encuentro_social),
+              pt = sum(pt),
+              votacion_emitida = sum(total_votos_validos),
+              votos_nulos = sum(votos_nulos),
+              lista_nominal = sum(lista_nominal))
+
+  avancedistritos <- avancedistritos %>%
+    left_join(cortemuestra) %>%
+    left_join(distritomuestra)
+
+  avancedistritos <- avancedistritos %>% mutate(ppan = round(pan / votacion_emitida, 3),
+                                                ppri = round(pri / votacion_emitida, 3),
+                                                pmorena = round(morena / votacion_emitida, 3),
+                                                pprd = round(prd / votacion_emitida, 3),
+                                                pph = round(humanista / votacion_emitida, 3),
+                                                ppes = round(pes / votacion_emitida, 3),
+                                                ppt = round(pt / votacion_emitida, 3),
+                                                pnulos = round(votos_nulos / votacion_emitida, 3),
+                                                participacion = round(votacion_emitida / lista_nominal, 3),
+                                                avance = round(avancecasillas / muestra, 3))
+
+
+  avanceestatal <- gobercorte %>%
+    ungroup() %>%
+    summarize(pan = sum(pan),
+              pri = sum(total_coalicion),
+              morena = sum(morena),
+              prd = sum(prd),
+              humanista = sum(humanista),
+              pes = sum(encuentro_social),
+              pt = sum(pt),
+              votacion_emitida = sum(total_votos_validos),
+              votos_nulos = sum(votos_nulos),
+              lista_nominal = sum(lista_nominal))
+  avanceestatal <- avanceestatal %>% mutate(ppan = round(pan / votacion_emitida, 3),
+                                            ppri = round(pri / votacion_emitida, 3),
+                                            pmorena = round(morena / votacion_emitida, 3),
+                                            pprd = round(prd / votacion_emitida, 3),
+                                            pph = round(humanista / votacion_emitida, 3),
+                                            ppes = round(pes / votacion_emitida, 3),
+                                            ppt = round(pt / votacion_emitida, 3),
+                                            pnulos = round(votos_nulos / votacion_emitida, 3),
+                                            participacion = round(votacion_emitida / lista_nominal, 3),
+                                            avance = round(casillas.capt / muestraestatal, 3))
+
+ capa_distritos <- readOGR("Shape15", layer="DLOC",  encoding = "UTF-8", use_iconv=TRUE)
 
 avancedistritos <- avancedistritos %>% mutate(muestraclasf= if_else(avance==1,0,
-                                        if_else(avance>0.90,1, 
-                                        if_else(avance>0.75,2, 
-                                                if_else(avance>0.50,3, 
+                                        if_else(avance>0.90,1,
+                                        if_else(avance>0.75,2,
+                                                if_else(avance>0.50,3,
                                                         if_else(avance>0.25,4,5))))))
 
 
@@ -323,20 +720,20 @@ popup <- paste0(
 
 
 
-mapadistritos <- leaflet(capa_distritos) %>% 
+mapadistritos <- leaflet(capa_distritos) %>%
   addProviderTiles(providers$CartoDB.PositronNoLabels) %>%
   addPolygons(data= capa_distritos,
               stroke= TRUE,
-              weight=0.2,                   
+              weight=0.2,
               opacity=1,
               fillColor = ~incipal(capa_distritos$muestraclasf),
               color= "white",
               fillOpacity = 1,
               smoothFactor = 0.5,
-              highlightOptions = highlightOptions(color = "black", 
+              highlightOptions = highlightOptions(color = "black",
                                                   weight = 1.2,
                                                   bringToFront = TRUE),
-              label=popup, 
+              label=popup,
               labelOptions = labelOptions(noHide = F, direction = "top",
                                           style = list(
                                             "color" = "black",
@@ -346,38 +743,94 @@ mapadistritos <- leaflet(capa_distritos) %>%
                                             "border-color" = "rgba(0,0,0,0.5)"
                                           )),
               group= "% CAPTURA DE MUESTRA") %>%
-  addLegend(position = "topleft", pal = incipal, values = ~niveles, opacity=1, group= "% CAPTURA DE MUESTRA", 
-            labFormat = function(type, cuts, p) {  
+  addLegend(position = "topleft", pal = incipal, values = ~niveles, opacity=1, group= "% CAPTURA DE MUESTRA",
+            labFormat = function(type, cuts, p) {
               paste0(labs)} ,
-            title = "AVANCE", na.label = "N/A") 
-
+            title = "AVANCE", na.label = "N/A")
+})
 ```
 
-```{r}
-mapadistritos
+```{r, echo = FALSE}
+renderLeaflet(mapadistritos_reactive())
 ```
 
 INFORMACIÓN POR CASILLA
 =====================================
 
 ```{r}
-CDSELECT <- gobercorte %>% select(distrito_local,seccion_casilla, pri, pan, morena, prd, pt, humanista, encuentro_social, votos_nulos, votacion_total_emitida, lista_nominal) %>% 
-  rename("DISTRITO LOCAL" = distrito_local, CASILLA=seccion_casilla, PAN=pan, PRI=pri, MORENA=morena, PRD=prd,PT=pt, 
-         PH=humanista, PES=encuentro_social, "VOTOS NULOS" =votos_nulos, "VOTACIÓN EMITIDA"=votacion_total_emitida, "LISTA NOMINAL"=lista_nominal)
-reactable(CDSELECT, searchable = TRUE, highlight = TRUE, defaultSorted = "VOTACIÓN EMITIDA", defaultSortOrder = "desc",
-  defaultPageSize = 20, minRows = 10, borderless = FALSE, striped = FALSE,
-    language = reactableLang(
-    searchPlaceholder = "Búsqueda...",
-    noData = "No encontrado",
-    pageInfo = "{rowStart} a {rowEnd} de {rows} entradas",
-    pagePrevious = "Previa",
-    pageNext = "Siguiente"), 
-    theme = reactableTheme(
-      style = list(fontFamily = "-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif"),
-      headerStyle = list(
-        "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
-        "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
-        borderColor = "#555"
-      )
-    ),)
+
+tabla_reactive <- reactive({
+
+  source("funciones/lecturaDatos.R")
+  gobernador2015 <- lecturaDatos()
+  gobernador2015 <- gobernador2015 %>%
+    mutate(DLOC = case_when(distrito_local == "SAN LUIS RIO COLORADO I" ~ 1,
+                            distrito_local == "PUERTO PEÑASCO II" ~ 2,
+                            distrito_local == "CABORCA III" ~ 3,
+                            distrito_local == "NOGALES NORTE IV" ~ 4,
+                            distrito_local == "NOGALES SUR V" ~ 5,
+                            distrito_local == "CANANEA VI" ~ 6,
+                            distrito_local == "AGUA PRIETA VII" ~ 7,
+                            distrito_local == "HERMOSILLO NOROESTE VIII" ~ 8,
+                            distrito_local == "HERMOSILLO CENTRO IX" ~ 9,
+                            distrito_local == "HERMOSILLO NORESTE X" ~ 10,
+                            distrito_local == "HERMOSILLO COSTA XI" ~ 11,
+                            distrito_local == "HERMOSILLO SUR XII" ~ 12,
+                            distrito_local == "GUAYMAS XIII" ~ 13,
+                            distrito_local == "EMPALME XIV" ~ 14,
+                            distrito_local == "OBREGON SUR XV" ~ 15,
+                            distrito_local == "OBREGON SURESTE XVI" ~ 16,
+                            distrito_local == "OBREGON CENTRO XVII" ~ 17,
+                            distrito_local == "OBREGON NORTE XVIII" ~ 18,
+                            distrito_local == "NAVOJOA NORTE XIX" ~ 19,
+                            distrito_local == "ETCHOJOA XX" ~ 20,
+                            distrito_local == "HUATABAMPO XXI" ~ 21))
+
+  muestra.fija <- read.csv("muestra_hora.csv")
+
+  muestra.fija <- muestra.fija %>%
+    select(casilla, hora)
+  distritocasillas <- gobernador2015 %>%
+    select(distrito_local, seccion_casilla) %>%
+    rename(casilla = seccion_casilla)
+  distritomuestra <- muestra.fija %>%
+    left_join(distritocasillas) %>%
+    count(distrito_local, name = "muestra")
+
+  df.muestra0 <- muestra.fija %>%
+    filter(hora <= input$HourLapse) %>%
+    select(casilla)
+
+  muestra0 <- df.muestra0$casilla
+
+  muestradistritos <- muestra0
+
+  gobercorte <- gobernador2015 %>%
+    filter(seccion_casilla %in% muestra0)
+  CDSELECT <- gobercorte %>%
+    select(distrito_local, seccion_casilla, pri, pan, morena, prd, pt, humanista, encuentro_social, votos_nulos, votacion_total_emitida, lista_nominal) %>%
+    rename("DISTRITO LOCAL" = distrito_local, CASILLA = seccion_casilla, PAN = pan, PRI = pri, MORENA = morena, PRD = prd, PT = pt,
+           PH = humanista, PES = encuentro_social, "VOTOS NULOS" = votos_nulos, "VOTACIÓN EMITIDA" = votacion_total_emitida, "LISTA NOMINAL" = lista_nominal)
+})
+```
+
+```{r}
+renderReactable({
+  reactable(tabla_reactive(), searchable = TRUE, highlight = TRUE, defaultSorted = "VOTACIÓN EMITIDA", defaultSortOrder = "desc",
+            defaultPageSize = 20, minRows = 10, borderless = FALSE, striped = FALSE,
+            language = reactableLang(
+              searchPlaceholder = "Búsqueda...",
+              noData = "No encontrado",
+              pageInfo = "{rowStart} a {rowEnd} de {rows} entradas",
+              pagePrevious = "Previa",
+              pageNext = "Siguiente"),
+            theme = reactableTheme(
+              style = list(fontFamily = "-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif"),
+              headerStyle = list(
+                "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
+                "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
+                borderColor = "#555"
+              )
+            ),)
+})
 ```
