@@ -152,6 +152,9 @@ avanceestatal_reactive <- reactive({
                                                 participacion = round(votacion_emitida / lista_nominal, 3),
                                                 avance = round(avancecasillas / muestra, 3))
 
+  casillas <- gobercorte %>% select(casilla_tipo)
+  urbanas <- sum(casillas$casilla_tipo == 'URBANA')/length(casillas$casilla_tipo)
+  rurales <- sum(casillas$casilla_tipo == 'RURAL')/length(casillas$casilla_tipo)
 
   avanceestatal <- gobercorte %>%
     ungroup() %>%
@@ -174,7 +177,9 @@ avanceestatal_reactive <- reactive({
                                             ppt = round(pt / votacion_emitida, 3),
                                             pnulos = round(votos_nulos / votacion_emitida, 3),
                                             participacion = round(votacion_emitida / lista_nominal, 3),
-                                            avance = round(casillas.capt / muestraestatal, 3))
+                                            avance = round(casillas.capt / muestraestatal, 3),
+                                            urbanas = urbanas,
+                                            rurales = rurales)
 })
 ```
 
@@ -210,6 +215,21 @@ renderValueBox({
 ```{r, echo = FALSE}
 renderValueBox({
   percent(avanceestatal_reactive()$pnulos)
+})
+```
+
+### **Porcentaje de casillas urbanas en muestra**
+```{r}
+renderValueBox({
+  percent(avanceestatal_reactive()$urbanas)
+})
+```
+
+### **Porcentaje de casillas rurales en muestra**
+```{r}
+
+renderValueBox({
+  percent(avanceestatal_reactive()$rurales)
 })
 ```
 
