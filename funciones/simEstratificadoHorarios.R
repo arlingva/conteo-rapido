@@ -75,10 +75,10 @@ simEstratificadoHorarios <- function(df, vecEstratos, vecNh, vecnh, pcapturado){
   deltaPRI <- sqrt(varPRI) * 2.575
   
   resultado <- cbind(estPRI, estPAN, varPRI, varPAN, deltaPAN, deltaPRI)
+  #resultado <- cbind(estPRI, estPAN, deltaPAN, deltaPRI)
   colnames(resultado) <- c("estPRI", "estPAN", 
                            "varPRI", "varPAN", 
                            "deltaPAN", "deltaPRI")
-  
   resultado <- resultado %>%
     as.data.frame() %>%
     mutate(dif.PRI = estPRI - resultadoReal$PRI,
@@ -101,9 +101,8 @@ resumenSimulacion <- function(df, vz){
            MaxPAN = estPAN + (vz * sqrt(varPAN)),
            capturaPRI = resultadoReal$PRI > MinPRI & resultadoReal$PRI < MaxPRI,
            capturaPAN = resultadoReal$PAN > MinPAN & resultadoReal$PAN < MaxPAN,
-           #longIntPRI = MaxPRI-MinPRI,
-           #longIntPAN = MaxPAN-MinPAN,
-           no.Traslape = MaxPAN < MinPRI | MaxPRI < MinPAN
+           #no.Traslape = MaxPAN < MinPRI | MaxPRI < MinPAN
+           no.Traslape = !(MaxPAN > MinPRI | MaxPRI > MinPAN)
     )
 }
 
@@ -114,13 +113,5 @@ resumenCaptura <- function(df){
                     PAN.capturado = 100*mean(capturaPAN),
                     no.Traslapado = 100*mean(no.Traslape)))
 }
-
-# Valores para probar función
-#df <- gobernador2015  %>% rename(estrato = distrito_local)
-#vecEstratos <- df.distritosTipo$estrato
-#vecNh <- df.distritosTipo$Nh
-#vecnh <- df.distritosTipo$nh
-
-
 
 #hora=rand.date("2021-06-06 18:00:00","2021-06-07 08:00:00", 2)

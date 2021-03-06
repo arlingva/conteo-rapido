@@ -72,17 +72,17 @@ df.distritosTipo <- gobernador2015 %>%
   mutate(nh = round(n * p)) %>%
   mutate(nh = if_else(nh == 1, 2, nh)) %>%
   arrange(distrito_tipo) %>%
-  rename(estrato = distrito_tipo)
+  dplyr::rename(estrato = distrito_tipo)
 
 df <- gobernador2015 %>%
-    rename(estrato = distrito_tipo) 
+    dplyr::rename(estrato = distrito_tipo) 
 ```
 
 ## Resultados según porcentaje de avance: Caso real
 
 ```{r, echo = FALSE}
 df0 <- gobernador2015 %>%
-  rename(estrato = distrito_local) 
+  dplyr::rename(estrato = distrito_local) 
 
 gobernador2015 %>%
   summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
@@ -92,12 +92,12 @@ gobernador2015 %>%
 
 ```{r, echo = FALSE}
 avance <-seq(0.4, 1, by=0.1)
-
+i<-1
 x<-data.frame()
 for(i in 1:length(avance)){
   simEstratificadoHorarios(df0, df.distritosTipo$estrato, 
                          df.distritosTipo$Nh, df.distritosTipo$nh, 
-                         pcapturado = avance[i]) %>%
+                         avance[i]) %>%
   select(estPRI, estPAN, deltaPRI, deltaPAN) %>%
   cbind(porc.avance = avance[i]) -> temp
   x <- rbind(x, temp)
