@@ -97,7 +97,7 @@ avanceestatal_reactive <- reactive({
                             distrito_local == "ETCHOJOA XX" ~ 20,
                             distrito_local == "HUATABAMPO XXI" ~ 21))
 
-  muestra.fija <- read.csv("muestra_hora.csv")
+  muestra.fija <- read.csv("data/muestra_hora.csv")
 
   muestra.fija <- muestra.fija %>%
     select(casilla, hora)
@@ -266,7 +266,7 @@ data_reactive <- reactive({
                             distrito_local == "ETCHOJOA XX" ~ 20,
                             distrito_local == "HUATABAMPO XXI" ~ 21))
 
-  muestra.fija <- read.csv("muestra_hora.csv")
+  muestra.fija <- read.csv("data/muestra_hora.csv")
 
   muestra.fija <- muestra.fija %>%
     select(casilla, hora)
@@ -438,7 +438,7 @@ resumen_reactive <- reactive({
                             distrito_local == "ETCHOJOA XX" ~ 20,
                             distrito_local == "HUATABAMPO XXI" ~ 21))
 
-  muestra.fija <- read.csv("muestra_hora.csv")
+  muestra.fija <- read.csv("data/muestra_hora.csv")
 
   muestra.fija <- muestra.fija %>%
     select(casilla, hora)
@@ -614,7 +614,7 @@ mapadistritos_reactive <- reactive({
                             distrito_local == "ETCHOJOA XX" ~ 20,
                             distrito_local == "HUATABAMPO XXI" ~ 21))
 
-  muestra.fija <- read.csv("muestra_hora.csv")
+  muestra.fija <- read.csv("data/muestra_hora.csv")
 
   muestra.fija <- muestra.fija %>%
     select(casilla, hora)
@@ -786,7 +786,7 @@ tabla_reactive <- reactive({
                             distrito_local == "ETCHOJOA XX" ~ 20,
                             distrito_local == "HUATABAMPO XXI" ~ 21))
 
-  muestra.fija <- read.csv("muestra_hora.csv")
+  muestra.fija <- read.csv("data/muestra_hora.csv")
 
   muestra.fija <- muestra.fija %>%
     select(casilla, hora)

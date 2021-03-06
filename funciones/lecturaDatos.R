@@ -14,7 +14,7 @@ lecturaDatos <- function(){
     left_join(x, ., by = c("seccion", "casilla")) %>%
     select(-c(distrito_local.y, municipio.y, domicilio)) %>%
     mutate(seccion_casilla = paste(seccion, casilla)) %>%
-    rename(municipio = municipio.x,
+    dplyr::rename(municipio = municipio.x,
            distrito_local = distrito_local.x)
   
   x <- casillas_sonora %>%

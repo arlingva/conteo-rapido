@@ -10,15 +10,16 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-hora.inicio <- "2021-06-06 18:00:00"
-hora.final <- "2021-06-07 00:00:00"
+hora.inicio <- "2021-06-06 18:30:00"
+hora.final <- "2021-06-07 00:30:00"
 
 valpha <- 2
 vlambda <- 1
 
-r <- rweibull(1000, valpha, vlambda)
+r <- rweibull(347, valpha, vlambda)
 hist(r, freq = FALSE, breaks = 12)
 curve(dweibull(x, valpha, vlambda), 0, 20, add = TRUE)
 
+write.csv(r, "data/horas weibull.csv")
 summary(r)
 ```

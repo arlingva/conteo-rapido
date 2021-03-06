@@ -1,49 +1,50 @@
 ---
-title: "Conteo rapido muestra estratificada proporcional"
-author: "Equipo 1"
-date: "2/5/2021"
+title: "Reporte"
+date: "6/6/2021"
 output:
   html_document: default
   pdf_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
 library(readxl)
 library(dplyr)
 library(janitor)
 library(magrittr)
 library(plotly)
+library(ggplot2)
+#library(officer)
+#library(rvg)
 ```
 
 ```{r}
-rm(list = ls())
+#rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source("funciones/muestra.R")
 source("funciones/resultadoMuestraFija.R")
 ```
 
-### Lectura de datos
-
 ```{r}
+### Lectura de datos
 source("funciones/lecturaDatos.R")
 gobernador2015 <- lecturaDatos() 
 ```
 
-### Resultado real
-
-```{r}
-gobernador2015 %>%
-  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
-            PAN = sum(pan) / sum(votacion_total_emitida)) %>%
-  select(PRI, PAN) -> resultadoReal
-
-resultadoReal
+```{r, warning=FALSE}
+cortes <- c("2021-06-06 19:00:00", "2021-06-06 19:30:00",
+            "2021-06-06 20:00:00", "2021-06-06 20:30:00", 
+            "2021-06-06 21:00:00", "2021-06-06 21:30:00", 
+            "2021-06-06 22:00:00", "2021-06-06 22:30:00", 
+            "2021-06-06 23:00:00", "2021-06-06 23:30:00", 
+            "2021-06-07 00:00:00")
+#k <- 4
+k  <- length(cortes)
 ```
 
-### Tamaño de muestra
-
 ```{r}
+### Tamaño de muestra
 N <- length(gobernador2015$seccion_casilla)
 n <- muestra(N)                             
 z <- 2.575
@@ -51,9 +52,8 @@ z <- 2.575
 #z <- 1.96
 ```
 
-### Resumen por distrito
-
 ```{r}
+### Resumen por distrito
 df.distritosTipo <- gobernador2015 %>%
   group_by(distrito_tipo) %>%
   summarise(LN = sum(lista_nominal),
@@ -62,27 +62,14 @@ df.distritosTipo <- gobernador2015 %>%
   mutate(nh = round(n * p)) %>%
   mutate(nh = if_else(nh == 1, 2, nh)) %>%
   arrange(distrito_tipo) %>%
-  rename(estrato = distrito_tipo)
+  dplyr::rename(estrato = distrito_tipo)
 
 df <- gobernador2015 %>%
-    rename(estrato = distrito_tipo) 
+    dplyr::rename(estrato = distrito_tipo) 
 ```
-
-### Función hora aleatoria (uniforme)
 
 ```{r}
-rand.date = function(start.time, end.time, size){
-  times <- seq(from=as.POSIXct(start.time), 
-               to=as.POSIXct(end.time), by="min")  
-  U <- runif(size, 1, length(times))  
-  date=times[U] 
-  return(date)
-}
-```
-
 ### Lee muestra
-
-```{r}
 #muestra.fija <- read.csv("data/muestra.csv")
 #write.csv(muestra.fija, "data/muestra_hora.csv")
 
@@ -94,26 +81,8 @@ muestra.fija <- muestra.fija %>%
   select(casilla, hora)
 ```
 
-### Simula en el día
-
 ```{r, warning=FALSE}
-cortes <- c("2021-06-06 19:00:00", "2021-06-06 19:30:00",
-            "2021-06-06 20:00:00", "2021-06-06 20:30:00", 
-            "2021-06-06 21:00:00", "2021-06-06 21:30:00", 
-            "2021-06-06 22:00:00", "2021-06-06 22:30:00", 
-            "2021-06-06 23:00:00", "2021-06-06 23:30:00", 
-            "2021-06-07 00:00:00")
-
-#casillas.capt <- c()
 resumen <- data.frame()
-```
-
-```{r}
-k  <- length(cortes)
-i<-1
-```
-
-```{r, warning=FALSE}
 for(i in 1:k){
   df.muestra0 <- muestra.fija %>%
     filter(hora <= cortes[i]) %>%
@@ -135,8 +104,23 @@ for(i in 1:k){
 #resumen
 ```
 
+### Hora de corte: 
+
 ```{r}
-print(paste("Hora de corte: ", resumen$hora[k]))
+resumen$hora[k]
+```
+
+### Porcentaje de avance
+
+```{r}
+paste("Se han capturado ", length(df0$seccion), " de ", n, " casillas (", 
+      round(resumen$avance[k]*100,2), "%)", sep = "")
+```
+
+```{r, eval = FALSE}
+df0 %>%
+  select(casilla_tipo) %>%
+  table()
 ```
 
 ```{r}
@@ -146,21 +130,13 @@ votos.partido <- resumen %>%
          estHUMANISTA, estPES, estnoREG, estNULOS) %>%
   t() %>%
   as.data.frame() %>%
-  rename(p = V1) %>%
+  dplyr::rename(p = V1) %>%
   arrange() 
 
 data <- data.frame(partido = row.names(votos.partido), p = votos.partido$p)
-
-fig <- plot_ly(data, x = ~partido, y = ~p, type = "bar")
-fig <- fig %>%
-  layout(title = paste("Hora de corte:", cortes[k],
-      "\nCasillas :", length(muestra0),
-      "\nAvance: ", round(100 * length(muestra0)/sum(df.distritosTipo$nh), 2), "%") %>% print())
-fig
 ```
 
 ```{r}
-library(ggplot2)
 data <- data.frame(
   partido = c("Coalición", "Humanista", "Morena", "PAN", 
               "Encuentro Social", "PRD", "PT"),
@@ -173,30 +149,59 @@ data <- data.frame(
             resumen$deltaPES[k], resumen$deltaPRD[k], 
             resumen$deltaPT[k])
 )
+data[,2:3] <- data[,2:3]*100
+data$porcentaje <- round(data$porcentaje,3)
 ```
+
+### Porcentaje de votos por partido
 
 ```{r}
 ggplot(data) +
-    geom_bar(aes(x=partido, y=porcentaje), stat="identity", fill="skyblue", alpha=0.7) +
-    geom_errorbar(aes(x=partido, ymin=porcentaje-error, ymax=porcentaje+error), 
-                   width=0.4, colour="orange", alpha=0.9, size=1.3)
-
-
+  geom_bar(aes(x=partido, y=porcentaje), 
+             stat="identity", fill="skyblue", alpha=0.7) +
+  geom_errorbar(aes(x=partido, 
+                      ymin=porcentaje-error, 
+                      ymax=porcentaje+error), 
+                   width=0.4, colour="orange", alpha=0.9, size=1.3) +
+  geom_text(aes(x=partido, y = porcentaje, label = porcentaje), 
+            position = position_dodge(width = 0.9), 
+            size=3, vjust=-1, hjust=0.5 ,col="black")
 ```
 
-
-### Gráfica  
+### Tendencia  
 
 ```{r, warning=FALSE}
-data <- resumen
+library(reshape)
+df2 <- resumen %>%
+  select(hora, estPRI, estPAN) %>%
+  melt() %>%
+  dplyr::rename(prop = value,
+                partido = variable) %>%
+  mutate(partido = gsub("est", "", partido),
+         prop = 100*prop)
 
-fig <- plot_ly(data, 
-               x = ~cortes[1:k], y = ~estPRI[1:k], type = 'scatter', name = 'PRI',
-               error_y = ~list(array = deltaPRI[1:k], color = '#000000')) %>%
-  add_trace(x = ~cortes[1:k], y = ~estPAN[1:k], type = 'scatter', name = 'PAN',
-               error_y = ~list(array = deltaPAN[1:k], color = '#000000'))
-fig
+df2 <- resumen %>%
+  select(hora, deltaPRI, deltaPAN) %>%
+  melt() %>%
+  dplyr::rename(delta = value,
+                partido = variable) %>%
+  mutate(partido = gsub("delta", "", partido)) %>%
+  select(delta) %>%
+  cbind(df2) %>%
+  mutate(delta = 100*delta)
 ```
+
+```{r, warning=FALSE}
+df2$prop <- round(df2$prop, 2)
+ggplot(df2, aes(x=hora, y=prop,
+                   group=partido, color=partido)) + 
+  geom_line() +
+  geom_point() +
+  geom_errorbar(aes(ymin=prop-delta, ymax=prop+delta), 
+                width=.2,
+                 position=position_dodge(0.05))
+```
+
 
 
 
