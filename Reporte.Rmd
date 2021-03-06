@@ -2,8 +2,8 @@
 title: "Reporte"
 date: "6/6/2021"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
   word_document: default
 ---
 
@@ -73,7 +73,7 @@ df <- gobernador2015 %>%
 #muestra.fija <- read.csv("data/muestra.csv")
 #write.csv(muestra.fija, "data/muestra_hora.csv")
 
-muestra.fija <- read.csv("data/muestra_hora.csv")
+muestra.fija <- read.csv("data/muestra_hora_w.csv")
 #hora <- rand.date(hora.inicio, hora.final, length(muestra.fija[,1]))
 muestra.fija <- muestra.fija %>%
   #cbind(hora) %>%
@@ -167,43 +167,6 @@ ggplot(data) +
             position = position_dodge(width = 0.9), 
             size=3, vjust=-1, hjust=0.5 ,col="black")
 ```
-
-### Tendencia  
-
-```{r, warning=FALSE}
-library(reshape)
-df2 <- resumen %>%
-  select(hora, estPRI, estPAN) %>%
-  melt() %>%
-  dplyr::rename(prop = value,
-                partido = variable) %>%
-  mutate(partido = gsub("est", "", partido),
-         prop = 100*prop)
-
-df2 <- resumen %>%
-  select(hora, deltaPRI, deltaPAN) %>%
-  melt() %>%
-  dplyr::rename(delta = value,
-                partido = variable) %>%
-  mutate(partido = gsub("delta", "", partido)) %>%
-  select(delta) %>%
-  cbind(df2) %>%
-  mutate(delta = 100*delta)
-```
-
-```{r, warning=FALSE}
-df2$prop <- round(df2$prop, 2)
-ggplot(df2, aes(x=hora, y=prop,
-                   group=partido, color=partido)) + 
-  geom_line() +
-  geom_point() +
-  geom_errorbar(aes(ymin=prop-delta, ymax=prop+delta), 
-                width=.2,
-                 position=position_dodge(0.05))
-```
-
-
-
 
 
 
