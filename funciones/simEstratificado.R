@@ -93,25 +93,3 @@ simEstratificado <- function(df, vecEstratos, vecNh, vecnh){
 #vecNh <- df.distritosTipo$Nh
 #vecnh <- df.distritosTipo$nh
 
-
-resumenSimulacion <- function(df, vz){
-  df %>%
-    mutate(MinPRI = estPRI - (vz * sqrt(varPRI)),
-           MaxPRI = estPRI + (vz * sqrt(varPRI)),
-           MinPAN = estPAN - (vz * sqrt(varPAN)),
-           MaxPAN = estPAN + (vz * sqrt(varPAN)),
-           capturaPRI = resultadoReal$PRI > MinPRI & resultadoReal$PRI < MaxPRI,
-           capturaPAN = resultadoReal$PAN > MinPAN & resultadoReal$PAN < MaxPAN,
-           #longIntPRI = MaxPRI-MinPRI,
-           #longIntPAN = MaxPAN-MinPAN,
-           no.Traslape = MaxPAN < MinPRI || MaxPRI < MinPAN
-    )
-}
-
-resumenCaptura <- function(df){
-  rbind(df %>%
-          select(capturaPRI, capturaPAN, no.Traslape) %>%
-          summarise(PRI.capturado = 100*mean(capturaPRI),
-                    PAN.capturado = 100*mean(capturaPAN),
-                    no.Traslapado = 100*mean(no.Traslape)))
-}

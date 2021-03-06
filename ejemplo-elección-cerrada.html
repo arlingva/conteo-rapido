@@ -433,7 +433,7 @@ summary {
 <pre class="r"><code>rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source(&quot;funciones/muestra.R&quot;)
-source(&quot;funciones/funcionSimulaEstrVar-02.R&quot;)
+#source(&quot;funciones/funcionSimulaEstrVar-02.R&quot;)
 source(&quot;funciones/lecturaDatos.R&quot;)
 source(&quot;funciones/simEstratificado.R&quot;)</code></pre>
 <div id="tamaño-de-muestra-y-número-de-repeticiones" class="section level3">
@@ -445,6 +445,26 @@ M &lt;- 1000
 #z &lt;- qnorm(1-0.01/2)
 #z &lt;- 1.96
 z &lt;- 2.575</code></pre>
+<pre class="r"><code>resumenSimulacion &lt;- function(df, vz){
+  df %&gt;%
+    mutate(MinPRI = estPRI - (vz * sqrt(varPRI)),
+           MaxPRI = estPRI + (vz * sqrt(varPRI)),
+           MinPAN = estPAN - (vz * sqrt(varPAN)),
+           MaxPAN = estPAN + (vz * sqrt(varPAN)),
+           capturaPRI = resultadoReal$PRI &gt; MinPRI &amp; resultadoReal$PRI &lt; MaxPRI,
+           capturaPAN = resultadoReal$PAN &gt; MinPAN &amp; resultadoReal$PAN &lt; MaxPAN,
+           #longIntPRI = MaxPRI-MinPRI,
+           #longIntPAN = MaxPAN-MinPAN,
+           sin.Traslape = MaxPAN &lt; MinPRI# | MaxPRI &lt; MinPAN
+    )
+}
+resumenCaptura &lt;- function(df){
+  rbind(df %&gt;%
+          select(capturaPRI, capturaPAN, sin.Traslape) %&gt;%
+          summarise(PRI.capturado = 100*mean(capturaPRI),
+                    PAN.capturado = 100*mean(capturaPAN),
+                    sin.Traslape = 100*mean(sin.Traslape)))
+}</code></pre>
 </div>
 <div id="resultado-real" class="section level1">
 <h1>Resultado real</h1>
@@ -467,29 +487,29 @@ resultadoReal %&gt;%
 simDistritoTipo %&gt;%
   head()</code></pre>
 <pre><code>##      estPRI    estPAN       varPRI       varPAN    deltaPAN    deltaPRI
-## 1 0.4800616 0.4049091 1.940951e-05 1.736233e-05 0.010729542 0.011344478
-## 2 0.4710490 0.4124751 1.594991e-05 1.617327e-05 0.010355621 0.010283865
-## 3 0.4755367 0.4038764 2.039697e-05 2.199758e-05 0.012077155 0.011629475
-## 4 0.4771529 0.4051491 1.328540e-05 1.181679e-05 0.008851706 0.009385654
-## 5 0.4720862 0.4083639 1.288976e-05 1.377044e-05 0.009555451 0.009244844
-## 6 0.4727756 0.4041753 2.175272e-05 1.940720e-05 0.011343804 0.012009751
-##         dif.PRI      dif.PAN    MinPRI    MaxPRI    MinPAN    MaxPAN capturaPRI
-## 1  0.0041994388 -0.001374375 0.4687171 0.4914060 0.3941796 0.4156386       TRUE
-## 2 -0.0048130842  0.006191604 0.4607652 0.4813329 0.4021195 0.4228307       TRUE
-## 3 -0.0003254082 -0.002407089 0.4639072 0.4871662 0.3917992 0.4159535       TRUE
-## 4  0.0012907281 -0.001134414 0.4677672 0.4865385 0.3962973 0.4140008       TRUE
-## 5 -0.0037759460  0.002080408 0.4628413 0.4813310 0.3988084 0.4179193       TRUE
-## 6 -0.0030865535 -0.002108170 0.4607658 0.4847853 0.3928315 0.4155191       TRUE
-##   capturaPAN no.Traslape
-## 1       TRUE        TRUE
-## 2       TRUE        TRUE
-## 3       TRUE        TRUE
-## 4       TRUE        TRUE
-## 5       TRUE        TRUE
-## 6       TRUE        TRUE</code></pre>
+## 1 0.4805746 0.3986806 1.715656e-05 1.481967e-05 0.009912803 0.010665773
+## 2 0.4661556 0.4131478 2.035420e-05 1.801976e-05 0.010930794 0.011617275
+## 3 0.4764522 0.4099915 1.768517e-05 1.646874e-05 0.010449787 0.010828838
+## 4 0.4773668 0.4064881 1.709390e-05 1.730125e-05 0.010710653 0.010646279
+## 5 0.4681258 0.4122948 1.253068e-05 1.632198e-05 0.010403121 0.009115166
+## 6 0.4721916 0.4095642 1.955203e-05 1.429084e-05 0.009734332 0.011386051
+##         dif.PRI       dif.PAN    MinPRI    MaxPRI    MinPAN    MaxPAN
+## 1  0.0047125072 -0.0076028284 0.4699089 0.4912404 0.3887678 0.4085934
+## 2 -0.0097064859  0.0068643035 0.4545384 0.4777729 0.4022170 0.4240786
+## 3  0.0005900822  0.0037080574 0.4656234 0.4872810 0.3995417 0.4204413
+## 4  0.0015046312  0.0002046603 0.4667205 0.4880130 0.3957775 0.4171988
+## 5 -0.0077363383  0.0060113154 0.4590106 0.4772410 0.4018917 0.4226979
+## 6 -0.0036705382  0.0032807771 0.4608055 0.4835776 0.3998299 0.4192986
+##   capturaPRI capturaPAN sin.Traslape
+## 1       TRUE       TRUE         TRUE
+## 2       TRUE       TRUE         TRUE
+## 3       TRUE       TRUE         TRUE
+## 4       TRUE       TRUE         TRUE
+## 5       TRUE       TRUE         TRUE
+## 6       TRUE       TRUE         TRUE</code></pre>
 <pre class="r"><code>resumenCaptura(simDistritoTipo)</code></pre>
-<pre><code>##   PRI.capturado PAN.capturado no.Traslapado
-## 1          98.4          98.8           100</code></pre>
+<pre><code>##   PRI.capturado PAN.capturado sin.Traslape
+## 1          99.2          99.3          100</code></pre>
 </div>
 <div id="resultado-real-pan-pan-10" class="section level1">
 <h1>Resultado real PAN = PAN + 10%</h1>
@@ -513,32 +533,32 @@ resultadoReal %&gt;%
 simDistritoTipo %&gt;%
   head()</code></pre>
 <pre><code>##      estPRI    estPAN       varPRI       varPAN   deltaPAN    deltaPRI
-## 1 0.4799367 0.4440287 2.204661e-05 2.324689e-05 0.01241537 0.012090609
-## 2 0.4711019 0.4564793 1.478387e-05 1.999439e-05 0.01151413 0.009900822
-## 3 0.4726043 0.4497830 1.957068e-05 2.112061e-05 0.01183397 0.011391480
-## 4 0.4675334 0.4477717 1.332650e-05 1.925133e-05 0.01129816 0.009400160
-## 5 0.4762659 0.4465913 1.626425e-05 2.037503e-05 0.01162322 0.010384709
-## 6 0.4694889 0.4557841 1.384760e-05 1.686780e-05 0.01057564 0.009582184
-##         dif.PRI       dif.PAN    MinPRI    MaxPRI    MinPAN    MaxPAN
-## 1  0.0040745723 -0.0028830741 0.4678461 0.4920273 0.4316134 0.4564441
-## 2 -0.0047602430  0.0095674472 0.4612011 0.4810027 0.4449651 0.4679934
-## 3 -0.0032578176  0.0028712047 0.4612128 0.4839958 0.4379491 0.4616170
-## 4 -0.0083287068  0.0008599206 0.4581333 0.4769336 0.4364736 0.4590699
-## 5  0.0004037417 -0.0003204745 0.4658812 0.4866506 0.4349681 0.4582146
-## 6 -0.0063732117  0.0088722772 0.4599067 0.4790711 0.4452085 0.4663597
-##   capturaPRI capturaPAN no.Traslape
-## 1       TRUE       TRUE        TRUE
-## 2       TRUE       TRUE        TRUE
-## 3       TRUE       TRUE        TRUE
-## 4       TRUE       TRUE        TRUE
-## 5       TRUE       TRUE        TRUE
-## 6       TRUE       TRUE        TRUE</code></pre>
+## 1 0.4719635 0.4520087 1.306056e-05 1.744813e-05 0.01075602 0.009305895
+## 2 0.4719888 0.4461979 1.412542e-05 1.785112e-05 0.01087953 0.009677828
+## 3 0.4772256 0.4450102 1.590301e-05 2.018006e-05 0.01156747 0.010268735
+## 4 0.4715318 0.4522555 1.357310e-05 1.777406e-05 0.01085602 0.009486735
+## 5 0.4746261 0.4490559 1.603894e-05 1.833579e-05 0.01102623 0.010312526
+## 6 0.4788920 0.4471513 1.723168e-05 1.858128e-05 0.01109980 0.010689097
+##        dif.PRI       dif.PAN    MinPRI    MaxPRI    MinPAN    MaxPAN capturaPRI
+## 1 -0.003898606  0.0050968640 0.4626576 0.4812694 0.4412527 0.4627647       TRUE
+## 2 -0.003873351 -0.0007138904 0.4623109 0.4816666 0.4353184 0.4570775       TRUE
+## 3  0.001363486 -0.0019016238 0.4669569 0.4874943 0.4334427 0.4565777       TRUE
+## 4 -0.004330350  0.0053436788 0.4620450 0.4810185 0.4413995 0.4631115       TRUE
+## 5 -0.001236055  0.0021441046 0.4643135 0.4849386 0.4380297 0.4600822       TRUE
+## 6  0.003029885  0.0002395319 0.4682029 0.4895811 0.4360516 0.4582511       TRUE
+##   capturaPAN sin.Traslape
+## 1       TRUE        FALSE
+## 2       TRUE         TRUE
+## 3       TRUE         TRUE
+## 4       TRUE        FALSE
+## 5       TRUE         TRUE
+## 6       TRUE         TRUE</code></pre>
 <pre class="r"><code>resumenCaptura(simDistritoTipo)</code></pre>
-<pre><code>##   PRI.capturado PAN.capturado no.Traslapado
-## 1          99.1          99.1           100</code></pre>
+<pre><code>##   PRI.capturado PAN.capturado sin.Traslape
+## 1          99.1          98.4         81.4</code></pre>
 </div>
-<div id="resultado-real-pan-pan-12" class="section level1">
-<h1>Resultado real PAN = PAN + 12%</h1>
+<div id="resultado-real-pan-pan-11" class="section level1">
+<h1>Resultado real PAN = PAN + 11%</h1>
 <pre class="r"><code>gobernador2015 &lt;- lecturaDatos()
 gobernador2015$pan &lt;- gobernador2015$pan * 1.11
 gobernador2015 %&gt;%
@@ -558,30 +578,76 @@ resultadoReal %&gt;%
 <pre class="r"><code>simDistritoTipo &lt;- resumenSimulacion(simDistritoTipo0, z)
 simDistritoTipo %&gt;%
   head()</code></pre>
-<pre><code>##      estPRI    estPAN       varPRI       varPAN   deltaPAN   deltaPRI
-## 1 0.4805778 0.4450230 1.912963e-05 2.206251e-05 0.01209497 0.01126239
-## 2 0.4799999 0.4481610 1.984922e-05 2.356704e-05 0.01250057 0.01147226
-## 3 0.4741916 0.4544599 1.534691e-05 2.272048e-05 0.01227399 0.01008760
-## 4 0.4761725 0.4513901 1.977662e-05 2.402997e-05 0.01262275 0.01145126
-## 5 0.4750680 0.4491953 1.803444e-05 2.071296e-05 0.01171921 0.01093525
-## 6 0.4736666 0.4497336 1.609184e-05 1.991308e-05 0.01149070 0.01032952
-##         dif.PRI       dif.PAN    MinPRI    MaxPRI    MinPAN    MaxPAN
-## 1  0.0047156388 -0.0059516336 0.4693154 0.4918401 0.4329281 0.4571180
-## 2  0.0041377575 -0.0028136999 0.4685276 0.4914721 0.4356604 0.4606615
-## 3 -0.0016705124  0.0034852344 0.4641040 0.4842792 0.4421859 0.4667339
-## 4  0.0003103909  0.0004154951 0.4647213 0.4876238 0.4387674 0.4640129
-## 5 -0.0007941155 -0.0017793418 0.4641328 0.4860033 0.4374761 0.4609145
-## 6 -0.0021954826 -0.0012410373 0.4633371 0.4839962 0.4382429 0.4612243
-##   capturaPRI capturaPAN no.Traslape
-## 1       TRUE       TRUE        TRUE
-## 2       TRUE       TRUE        TRUE
-## 3       TRUE       TRUE        TRUE
-## 4       TRUE       TRUE        TRUE
-## 5       TRUE       TRUE        TRUE
-## 6       TRUE       TRUE        TRUE</code></pre>
+<pre><code>##      estPRI    estPAN       varPRI       varPAN   deltaPAN    deltaPRI
+## 1 0.4681009 0.4598167 1.376155e-05 1.754477e-05 0.01078577 0.009552364
+## 2 0.4793717 0.4507493 1.596517e-05 1.847785e-05 0.01106886 0.010288783
+## 3 0.4688475 0.4593413 1.530349e-05 2.218212e-05 0.01212771 0.010073315
+## 4 0.4809468 0.4489909 1.914377e-05 1.957483e-05 0.01139269 0.011266550
+## 5 0.4736283 0.4514577 1.404840e-05 1.767781e-05 0.01082658 0.009651406
+## 6 0.4789237 0.4481321 2.359433e-05 2.571010e-05 0.01305657 0.012507803
+##        dif.PRI       dif.PAN    MinPRI    MaxPRI    MinPAN    MaxPAN capturaPRI
+## 1 -0.007761261  0.0088420380 0.4585485 0.4776532 0.4490309 0.4706025       TRUE
+## 2  0.003509547 -0.0002253977 0.4690829 0.4896605 0.4396804 0.4618181       TRUE
+## 3 -0.007014663  0.0083666620 0.4587741 0.4789208 0.4472136 0.4714690       TRUE
+## 4  0.005084706 -0.0019837495 0.4696803 0.4922134 0.4375982 0.4603836       TRUE
+## 5 -0.002233839  0.0004830569 0.4639769 0.4832797 0.4406311 0.4622843       TRUE
+## 6  0.003061540 -0.0028425206 0.4664159 0.4914315 0.4350756 0.4611887       TRUE
+##   capturaPAN sin.Traslape
+## 1       TRUE        FALSE
+## 2       TRUE         TRUE
+## 3       TRUE        FALSE
+## 4       TRUE         TRUE
+## 5       TRUE         TRUE
+## 6       TRUE         TRUE</code></pre>
 <pre class="r"><code>resumenCaptura(simDistritoTipo)</code></pre>
-<pre><code>##   PRI.capturado PAN.capturado no.Traslapado
-## 1          98.3          99.3           100</code></pre>
+<pre><code>##   PRI.capturado PAN.capturado sin.Traslape
+## 1          98.8          98.9         64.1</code></pre>
+</div>
+<div id="resultado-real-pan-pan-12" class="section level1">
+<h1>Resultado real PAN = PAN + 12%</h1>
+<pre class="r"><code>gobernador2015 &lt;- lecturaDatos()
+gobernador2015$pan &lt;- gobernador2015$pan * 1.12
+gobernador2015 %&gt;%
+  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
+            PAN = sum(pan) / sum(votacion_total_emitida)) %&gt;%
+  select(PRI, PAN) -&gt; resultadoReal
+resultadoReal %&gt;%
+  mutate(PRI - PAN)</code></pre>
+<pre><code>## # A tibble: 1 x 3
+##     PRI   PAN `PRI - PAN`
+##   &lt;dbl&gt; &lt;dbl&gt;       &lt;dbl&gt;
+## 1 0.476 0.455      0.0208</code></pre>
+<pre class="r"><code>simDistritoTipo0 &lt;- gobernador2015 %&gt;%
+  dplyr::rename(estrato = distrito_tipo) %&gt;%
+  simEstratificado(df.distritosTipo$estrato, 
+                   df.distritosTipo$Nh, df.distritosTipo$nh)</code></pre>
+<pre class="r"><code>simDistritoTipo &lt;- resumenSimulacion(simDistritoTipo0, z)
+simDistritoTipo %&gt;%
+  head()</code></pre>
+<pre><code>##      estPRI    estPAN       varPRI       varPAN   deltaPAN    deltaPRI
+## 1 0.4799915 0.4550011 1.528950e-05 1.863601e-05 0.01111613 0.010068711
+## 2 0.4741938 0.4541816 1.672541e-05 2.246146e-05 0.01220383 0.010530903
+## 3 0.4774193 0.4570964 1.286652e-05 1.530915e-05 0.01007518 0.009236508
+## 4 0.4766842 0.4580842 1.743146e-05 2.114125e-05 0.01183975 0.010750882
+## 5 0.4697197 0.4623293 2.114906e-05 2.437366e-05 0.01271269 0.011841937
+## 6 0.4769608 0.4516068 1.755477e-05 2.019293e-05 0.01157116 0.010788841
+##         dif.PRI       dif.PAN    MinPRI    MaxPRI    MinPAN    MaxPAN
+## 1  0.0041294135 -3.640794e-05 0.4699228 0.4900602 0.4438849 0.4661172
+## 2 -0.0016683062 -8.558506e-04 0.4636629 0.4847247 0.4419778 0.4663855
+## 3  0.0015572014  2.058927e-03 0.4681828 0.4866558 0.4470212 0.4671716
+## 4  0.0008220853  3.046754e-03 0.4659333 0.4874351 0.4462445 0.4699240
+## 5 -0.0061424195  7.291806e-03 0.4578778 0.4815616 0.4496166 0.4750420
+## 6  0.0010986323 -3.430658e-03 0.4661719 0.4877496 0.4400357 0.4631780
+##   capturaPRI capturaPAN sin.Traslape
+## 1       TRUE       TRUE         TRUE
+## 2       TRUE       TRUE        FALSE
+## 3       TRUE       TRUE         TRUE
+## 4       TRUE       TRUE        FALSE
+## 5       TRUE       TRUE        FALSE
+## 6       TRUE       TRUE         TRUE</code></pre>
+<pre class="r"><code>resumenCaptura(simDistritoTipo)</code></pre>
+<pre><code>##   PRI.capturado PAN.capturado sin.Traslape
+## 1            99          99.1         45.2</code></pre>
 </div>
 <div id="pan-pan-prd-morena" class="section level1">
 <h1>PAN = PAN + PRD + MORENA</h1>
@@ -615,29 +681,29 @@ resultadoReal %&gt;%
 simDistritoTipo %&gt;%
   head()</code></pre>
 <pre><code>##      estPRI    estPAN       varPRI       varPAN    deltaPAN    deltaPRI
-## 1 0.4781389 0.4725789 1.891666e-05 1.791587e-05 0.010899239 0.011199521
-## 2 0.4817614 0.4697728 1.765980e-05 1.698738e-05 0.010613055 0.010821068
-## 3 0.4734810 0.4779783 1.657248e-05 1.504586e-05 0.009988167 0.010482647
-## 4 0.4821182 0.4704899 2.477317e-05 2.170541e-05 0.011996683 0.012816459
-## 5 0.4757364 0.4747649 2.228961e-05 1.883097e-05 0.011174126 0.012157058
-## 6 0.4714459 0.4810539 1.129141e-05 1.137884e-05 0.008686127 0.008652693
+## 1 0.4751918 0.4745032 1.497920e-05 1.448395e-05 0.009799878 0.009966014
+## 2 0.4780751 0.4716799 1.821221e-05 1.577991e-05 0.010228914 0.010989008
+## 3 0.4723683 0.4785982 1.989252e-05 1.875894e-05 0.011152734 0.011484766
+## 4 0.4713528 0.4788081 1.618680e-05 1.523375e-05 0.010050338 0.010359951
+## 5 0.4735386 0.4775647 1.412987e-05 1.243808e-05 0.009081424 0.009679351
+## 6 0.4753026 0.4759795 1.275950e-05 1.215887e-05 0.008978916 0.009198014
 ##         dif.PRI       dif.PAN    MinPRI    MaxPRI    MinPAN    MaxPAN
-## 1  0.0022768066 -0.0027730631 0.4669394 0.4893385 0.4616797 0.4834782
-## 2  0.0058992349 -0.0055792034 0.4709403 0.4925824 0.4591597 0.4803859
-## 3 -0.0023811401  0.0026262867 0.4629983 0.4839636 0.4679901 0.4879665
-## 4  0.0062560483 -0.0048620812 0.4693017 0.4949346 0.4584932 0.4824866
-## 5 -0.0001256915 -0.0005871028 0.4635794 0.4878935 0.4635908 0.4859390
-## 6 -0.0044162724  0.0057019144 0.4627932 0.4800985 0.4723678 0.4897400
-##   capturaPRI capturaPAN no.Traslape
-## 1       TRUE       TRUE       FALSE
-## 2       TRUE       TRUE       FALSE
-## 3       TRUE       TRUE       FALSE
-## 4       TRUE       TRUE       FALSE
-## 5       TRUE       TRUE       FALSE
-## 6       TRUE       TRUE       FALSE</code></pre>
+## 1 -0.0006702747 -0.0008488500 0.4652258 0.4851579 0.4647033 0.4843030
+## 2  0.0022130203 -0.0036721279 0.4670861 0.4890642 0.4614510 0.4819088
+## 3 -0.0034938498  0.0032461869 0.4608835 0.4838530 0.4674455 0.4897509
+## 4 -0.0045093102  0.0034561185 0.4609929 0.4817128 0.4687578 0.4888585
+## 5 -0.0023234741  0.0022127243 0.4638593 0.4832180 0.4684833 0.4866462
+## 6 -0.0005595684  0.0006275332 0.4661045 0.4845006 0.4670006 0.4849585
+##   capturaPRI capturaPAN sin.Traslape
+## 1       TRUE       TRUE        FALSE
+## 2       TRUE       TRUE        FALSE
+## 3       TRUE       TRUE        FALSE
+## 4       TRUE       TRUE        FALSE
+## 5       TRUE       TRUE        FALSE
+## 6       TRUE       TRUE        FALSE</code></pre>
 <pre class="r"><code>resumenCaptura(simDistritoTipo)</code></pre>
-<pre><code>##   PRI.capturado PAN.capturado no.Traslapado
-## 1          99.2          99.4             0</code></pre>
+<pre><code>##   PRI.capturado PAN.capturado sin.Traslape
+## 1            99            99          0.1</code></pre>
 </div>
 
 

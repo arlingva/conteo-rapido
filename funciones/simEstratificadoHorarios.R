@@ -101,8 +101,7 @@ resumenSimulacion <- function(df, vz){
            MaxPAN = estPAN + (vz * sqrt(varPAN)),
            capturaPRI = resultadoReal$PRI > MinPRI & resultadoReal$PRI < MaxPRI,
            capturaPAN = resultadoReal$PAN > MinPAN & resultadoReal$PAN < MaxPAN,
-           #no.Traslape = MaxPAN < MinPRI | MaxPRI < MinPAN
-           no.Traslape = !(MaxPAN > MinPRI | MaxPRI > MinPAN)
+           sin.Traslape = MinPRI > MaxPAN
     )
 }
 

@@ -30,7 +30,7 @@ library(Cairo)
 rm(list = ls())
 `%notin%` = function(x,y) !(x %in% y)
 source("funciones/muestra.R")
-source("funciones/funcionSimulaEstrVar-02.R")
+#source("funciones/funcionSimulaEstrVar-02.R")
 source("funciones/lecturaDatos.R")
 source("funciones/simEstratificado.R")
 ```
@@ -46,6 +46,30 @@ M <- 1000
 #z <- 1.96
 z <- 2.575
 ```
+
+```{r}
+resumenSimulacion <- function(df, vz){
+  df %>%
+    mutate(MinPRI = estPRI - (vz * sqrt(varPRI)),
+           MaxPRI = estPRI + (vz * sqrt(varPRI)),
+           MinPAN = estPAN - (vz * sqrt(varPAN)),
+           MaxPAN = estPAN + (vz * sqrt(varPAN)),
+           capturaPRI = resultadoReal$PRI > MinPRI & resultadoReal$PRI < MaxPRI,
+           capturaPAN = resultadoReal$PAN > MinPAN & resultadoReal$PAN < MaxPAN,
+           #longIntPRI = MaxPRI-MinPRI,
+           #longIntPAN = MaxPAN-MinPAN,
+           sin.Traslape = MaxPAN < MinPRI# | MaxPRI < MinPAN
+    )
+}
+resumenCaptura <- function(df){
+  rbind(df %>%
+          select(capturaPRI, capturaPAN, sin.Traslape) %>%
+          summarise(PRI.capturado = 100*mean(capturaPRI),
+                    PAN.capturado = 100*mean(capturaPAN),
+                    sin.Traslape = 100*mean(sin.Traslape)))
+}
+```
+
 
 ```{r, echo = FALSE}
 df.distritosTipo <- gobernador2015 %>%
@@ -70,8 +94,6 @@ gobernador2015 %>%
 resultadoReal %>%
   mutate(PRI - PAN)
 ```
-
-
 
 ```{r}
 simDistritoTipo0 <- gobernador2015 %>%
@@ -114,11 +136,38 @@ simDistritoTipo %>%
 resumenCaptura(simDistritoTipo)
 ```
 
-# Resultado real PAN = PAN + 12%
+# Resultado real PAN = PAN + 11%
 
 ```{r}
 gobernador2015 <- lecturaDatos()
 gobernador2015$pan <- gobernador2015$pan * 1.11
+gobernador2015 %>%
+  summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
+            PAN = sum(pan) / sum(votacion_total_emitida)) %>%
+  select(PRI, PAN) -> resultadoReal
+resultadoReal %>%
+  mutate(PRI - PAN)
+```
+
+```{r}
+simDistritoTipo0 <- gobernador2015 %>%
+  dplyr::rename(estrato = distrito_tipo) %>%
+  simEstratificado(df.distritosTipo$estrato, 
+                   df.distritosTipo$Nh, df.distritosTipo$nh)
+```
+
+```{r, message = FALSE}
+simDistritoTipo <- resumenSimulacion(simDistritoTipo0, z)
+simDistritoTipo %>%
+  head()
+resumenCaptura(simDistritoTipo)
+```
+
+# Resultado real PAN = PAN + 12%
+
+```{r}
+gobernador2015 <- lecturaDatos()
+gobernador2015$pan <- gobernador2015$pan * 1.12
 gobernador2015 %>%
   summarise(PRI = sum(total_coalicion) / sum(votacion_total_emitida),
             PAN = sum(pan) / sum(votacion_total_emitida)) %>%
